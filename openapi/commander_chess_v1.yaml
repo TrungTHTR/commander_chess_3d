@@ -1,0 +1,921 @@
+openapi: 3.1.0
+info:
+  title: Commander Chess 3D (Cờ Tư Lệnh) Multiplayer API
+  version: 1.0.0
+  summary: Authoritative REST & WebSocket contract for online Commander Chess (Cờ Tư Lệnh) matches.
+  description: |
+    Contract-first OpenAPI 3.1.0 specification for Commander Chess 3D (Cờ Tư Lệnh)
+    multiplayer matchmaking, authoritative server-side move validation on the 11x12
+    intersection grid (132 vertices), match replay retrieval, and real-time
+    WebSocket synchronization.
+
+    ### Authoritative Rules Guarantees
+    - Server runs the pure-Dart `CommanderRulesEngine` and validates terrain admissibility
+      (`deepSea` a/b, `mixed` coast c + estuary d6/e6/d7/e7, `land` d..k, river divider
+      between ranks 6 and 7 with fords f6-f7 and h6-h7), stacking (`carriedPieces`),
+      Air Defense interception (`AIR-KAMIKAZE`), Heroic promotions, and Commander LoS.
+    - During `setup` phase when hidden deployment is enabled, `GET /v1/matches/{matchId}`
+      redacts opponent hidden piece coordinates until both sides lock deployment.
+    - All timestamps are serialized as ISO-8601 UTC strings (`YYYY-MM-DDTHH:MM:SSZ`).
+
+servers:
+  - url: https://api.commanderchess.example.com
+    description: Production API server
+  - url: http://localhost:8080
+    description: Local development server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Matches
+    description: Match creation, matchmaking queue, state snapshots, and resignation
+  - name: Moves
+    description: Authoritative turn submission with idempotency guarantees
+  - name: Replays
+    description: Completed or in-progress match history and PGN/FEN replay payloads
+  - name: Realtime
+    description: WebSocket synchronization channel and versioned MatchSyncEventDto envelopes
+
+paths:
+  /v1/matches:
+    get:
+      tags:
+        - Matches
+      operationId: listMatches
+      summary: List active and recent Commander Chess matches
+      description: Returns summary projections (`MatchSummaryDto`) for lobby and active match listings.
+      responses:
+        '200':
+          description: List of match summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MatchSummaryDto'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags:
+        - Matches
+      operationId: createMatch
+      summary: Create or queue a Commander Chess match
+      description: |
+        Creates a new authoritative match or enters a matchmaking queue using the
+        specified `GameMode`, `preferredSide`, `RuleVariantConfig`, and clock settings
+        (`timeControlSeconds`, `incrementSeconds`). Supplying an `Idempotency-Key`
+        header guarantees safe mobile client retries without creating duplicate matches.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Client-generated UUID/ULID to deduplicate retried match creation requests.
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchRequestDto'
+      responses:
+        '201':
+          description: Match created or matchmaking ticket issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateMatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /v1/matches/{matchId}:
+    get:
+      tags:
+        - Matches
+      operationId: getMatchSnapshot
+      summary: Fetch authoritative match snapshot, FEN, and turn history
+      description: |
+        Returns the authoritative `GameSessionState` snapshot alongside the canonical
+        Commander Chess FEN string, server clocks, turn history, and the latest WebSocket
+        sequence number (`lastSeq`) for gap-free reconnect synchronization.
+      parameters:
+        - $ref: '#/components/parameters/MatchIdParam'
+      responses:
+        '200':
+          description: Authoritative match snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchSnapshotResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/matches/{matchId}/moves:
+    post:
+      tags:
+        - Moves
+      operationId: submitMove
+      summary: Submit a player move to the authoritative rules engine
+      description: |
+        Validates turn ownership, `expectedTurnNumber`, `clientRequestId`, and full
+        Cờ Tư Lệnh movement/capture/embark/disembark rules. On acceptance, advances
+        the authoritative `GameSessionState` and broadcasts a `moveAccepted` /
+        `moveApplied` `MatchSyncEventDto` over the match WebSocket channel.
+      parameters:
+        - $ref: '#/components/parameters/MatchIdParam'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Optional header mirror of `MoveSubmissionDto.clientRequestId`.
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveSubmissionDto'
+      responses:
+        '200':
+          description: Move validated, applied, and committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoveAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /v1/matches/{matchId}/resign:
+    post:
+      tags:
+        - Matches
+      operationId: resignMatch
+      summary: Resign from an active match
+      description: |
+        Immediately ends the active match with `phase = finished`, awards victory
+        to the opponent with `victoryReason = resignation`, and broadcasts a
+        `matchEnded` `MatchSyncEventDto`.
+      parameters:
+        - $ref: '#/components/parameters/MatchIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResignMatchRequest'
+      responses:
+        '200':
+          description: Match resigned and finalized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchSnapshotResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /v1/matches/{matchId}/replay:
+    get:
+      tags:
+        - Replays
+      operationId: getMatchReplay
+      summary: Fetch full match replay and notation timeline
+      description: |
+        Returns the initial FEN, `RuleVariantConfig`, ordered `GameMove` records,
+        outcome metadata, and per-side material scores for replay playback.
+      parameters:
+        - $ref: '#/components/parameters/MatchIdParam'
+      responses:
+        '200':
+          description: Complete match replay record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchReplayResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/matches/{matchId}/ws:
+    get:
+      tags:
+        - Realtime
+      operationId: connectMatchWebSocket
+      summary: WebSocket channel for real-time match synchronization
+      description: |
+        Upgrades an authenticated HTTP request to a WebSocket (`wss://.../v1/matches/{matchId}/ws`)
+        carrying server-to-client `MatchSyncEventDto` JSON frames.
+
+        ### Connection & Resync Protocol
+        1. Authenticate using the standard `Authorization: Bearer <jwt>` header.
+        2. Optionally pass `sinceSeq` query parameter to replay missed events since a
+           previously processed sequence number; if `sinceSeq` is older than the server
+           ring buffer, the client should call `GET /v1/matches/{matchId}` to resync.
+        3. Server emits `MatchSyncEventDto` payloads with `eventType` in `SyncEventType`
+           (`["matchCreated", "moveAccepted", "moveApplied", "moveRejected", "stateSnapshot", "matchEnded", "opponentConnected", "opponentDisconnected", "heartbeat"]`).
+        4. Heartbeat frames are sent every 15 seconds; clients should reconnect with
+           exponential backoff if no `heartbeat` is observed within 35 seconds.
+      parameters:
+        - $ref: '#/components/parameters/MatchIdParam'
+        - name: sinceSeq
+          in: query
+          required: false
+          description: Last `MatchSyncEventDto.sequenceNumber` processed by the client before reconnect.
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '101':
+          description: Switching Protocols — WebSocket stream emitting `MatchSyncEventDto` JSON frames.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchSyncEventDto'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT bearer token issued by the Commander Chess identity service (`sub` claim identifies the player).
+
+  parameters:
+    MatchIdParam:
+      name: matchId
+      in: path
+      required: true
+      description: Unique match identifier.
+      schema:
+        type: string
+        minLength: 4
+        maxLength: 64
+        example: match_01JCHESS9901
+
+  responses:
+    BadRequestError:
+      description: Malformed JSON or syntactically invalid request parameters.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    UnauthorizedError:
+      description: Missing, expired, or invalid JWT Bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ForbiddenError:
+      description: Authenticated player is not a participant or authorized spectator for this match.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFoundError:
+      description: Requested match or resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ConflictError:
+      description: Stale `expectedTurnNumber`, duplicate conflicting submission, or match already finished.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ValidationError:
+      description: Semantic or Cờ Tư Lệnh rules validation failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - fieldErrors
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code (e.g., `VALIDATION_ERROR`, `ILLEGAL_MOVE`, `TURN_CONFLICT`, `UNAUTHORIZED`).
+          example: ILLEGAL_MOVE
+        message:
+          type: string
+          description: Human-readable diagnostic summary.
+          example: Heavy piece artillery cannot cross deep river unassisted.
+        fieldErrors:
+          type: object
+          description: Map of offending request field paths to validation error messages.
+          additionalProperties:
+            type: string
+          example:
+            to: Destination crosses deep river without a ford or engineer ferry.
+        requestId:
+          type:
+            - string
+            - 'null'
+          description: Server correlation ID for tracing.
+          example: req_01JCHESS0042
+        timestampUtc:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: ISO-8601 UTC timestamp when the error was produced.
+
+    PlayerSide:
+      type: string
+      enum:
+        - red
+        - blue
+
+    PieceType:
+      type: string
+      enum:
+        - commander
+        - headquarters
+        - infantry
+        - militia
+        - engineer
+        - tank
+        - artillery
+        - antiAircraft
+        - missile
+        - airForce
+        - navy
+
+    ActionKind:
+      type: string
+      enum:
+        - move
+        - capture
+        - stayCapture
+        - embark
+        - disembark
+
+    GameMode:
+      type: string
+      enum:
+        - localPassAndPlay
+        - vsAi
+        - onlineMultiplayer
+
+    MatchPhase:
+      type: string
+      enum:
+        - setup
+        - playing
+        - check
+        - finished
+
+    VictoryReason:
+      type: string
+      enum:
+        - commanderCaptured
+        - divisionEliminated
+        - resignation
+        - timeout
+        - draw
+
+    BoardCoord:
+      type: object
+      additionalProperties: false
+      required:
+        - file
+        - rank
+      description: "0-based intersection coordinate on the 11x12 grid (`a1` = `{file: 0, rank: 0}`, `k12` = `{file: 10, rank: 11}`)."
+      properties:
+        file:
+          type: integer
+          minimum: 0
+          maximum: 10
+        rank:
+          type: integer
+          minimum: 0
+          maximum: 11
+
+    PieceEntity:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - side
+        - type
+        - position
+        - isHero
+        - carriedPieces
+        - isAlive
+      properties:
+        id:
+          type: string
+          example: red_tank_0
+        side:
+          $ref: '#/components/schemas/PlayerSide'
+        type:
+          $ref: '#/components/schemas/PieceType'
+        position:
+          $ref: '#/components/schemas/BoardCoord'
+        isHero:
+          type: boolean
+          default: false
+        carriedPieces:
+          type: array
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/PieceEntity'
+        isAlive:
+          type: boolean
+          default: true
+
+    GameMove:
+      type: object
+      additionalProperties: false
+      required:
+        - side
+        - pieceId
+        - from
+        - to
+        - kind
+        - timestampUtc
+      properties:
+        side:
+          $ref: '#/components/schemas/PlayerSide'
+        pieceId:
+          type: string
+        from:
+          $ref: '#/components/schemas/BoardCoord'
+        to:
+          $ref: '#/components/schemas/BoardCoord'
+        kind:
+          $ref: '#/components/schemas/ActionKind'
+        targetPieceId:
+          type:
+            - string
+            - 'null'
+        carriedPieceId:
+          type:
+            - string
+            - 'null'
+        timestampUtc:
+          type: string
+          format: date-time
+
+    RuleVariantConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        hqShelterEnabled:
+          type: boolean
+          default: true
+          description: Enables Headquarters sheltering rules when active.
+        fourBattleMode:
+          type: boolean
+          default: false
+          description: If true, enables Tactical 4-Battle victory rules alongside Commander capture.
+        allowDrawByRepetition:
+          type: boolean
+          default: true
+          description: Enables draw by threefold repetition.
+
+    MatchClocksDto:
+      type: object
+      additionalProperties: false
+      required:
+        - redRemainingMs
+        - blueRemainingMs
+        - activeSide
+        - syncedAtUtc
+      properties:
+        redRemainingMs:
+          type: integer
+          minimum: 0
+        blueRemainingMs:
+          type: integer
+          minimum: 0
+        activeSide:
+          oneOf:
+            - $ref: '#/components/schemas/PlayerSide'
+            - type: 'null'
+        syncedAtUtc:
+          type: string
+          format: date-time
+
+    GameSessionState:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - mode
+        - boardFiles
+        - boardRanks
+        - pieces
+        - currentTurn
+        - phase
+        - moveHistory
+        - turnNumber
+        - variantConfig
+      properties:
+        matchId:
+          type: string
+        mode:
+          $ref: '#/components/schemas/GameMode'
+        boardFiles:
+          type: integer
+          const: 11
+          default: 11
+        boardRanks:
+          type: integer
+          const: 12
+          default: 12
+        pieces:
+          type: array
+          items:
+            $ref: '#/components/schemas/PieceEntity'
+        currentTurn:
+          $ref: '#/components/schemas/PlayerSide'
+        phase:
+          $ref: '#/components/schemas/MatchPhase'
+        winner:
+          oneOf:
+            - $ref: '#/components/schemas/PlayerSide'
+            - type: 'null'
+        victoryReason:
+          oneOf:
+            - $ref: '#/components/schemas/VictoryReason'
+            - type: 'null'
+        moveHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameMove'
+        turnNumber:
+          type: integer
+          minimum: 1
+        variantConfig:
+          $ref: '#/components/schemas/RuleVariantConfig'
+
+    CreateMatchRequestDto:
+      type: object
+      additionalProperties: false
+      required:
+        - mode
+      properties:
+        mode:
+          $ref: '#/components/schemas/GameMode'
+          default: onlineMultiplayer
+        preferredSide:
+          oneOf:
+            - $ref: '#/components/schemas/PlayerSide'
+            - type: 'null'
+        variantConfig:
+          $ref: '#/components/schemas/RuleVariantConfig'
+        timeControlSeconds:
+          type: integer
+          minimum: 60
+          maximum: 7200
+          default: 900
+        incrementSeconds:
+          type: integer
+          minimum: 0
+          maximum: 120
+          default: 10
+
+    CreateMatchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - queueStatus
+        - session
+        - fen
+        - websocketUrl
+      properties:
+        matchId:
+          type: string
+        queueStatus:
+          type: string
+          enum:
+            - queued
+            - active
+        assignedSide:
+          oneOf:
+            - $ref: '#/components/schemas/PlayerSide'
+            - type: 'null'
+        inviteCode:
+          type:
+            - string
+            - 'null'
+        fen:
+          type: string
+          example: 6c4/1n2fh1hf2/3a2s2a1/2n1gt1tg2/2ie2m2ei/11/11/2IE2M2EI/2N1GT1TG2/3A2S2A1/1N2FH1HF2/6C4 r - - 0 1
+        session:
+          $ref: '#/components/schemas/GameSessionState'
+        clocks:
+          oneOf:
+            - $ref: '#/components/schemas/MatchClocksDto'
+            - type: 'null'
+        websocketUrl:
+          type: string
+          format: uri
+          example: wss://api.commanderchess.example.com/v1/matches/match_01JCHESS9901/ws
+
+    MatchSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - fen
+        - turnNumber
+        - currentTurn
+        - phase
+        - session
+        - moveHistory
+        - lastSeq
+      properties:
+        matchId:
+          type: string
+        fen:
+          type: string
+        turnNumber:
+          type: integer
+          minimum: 1
+        currentTurn:
+          $ref: '#/components/schemas/PlayerSide'
+        phase:
+          $ref: '#/components/schemas/MatchPhase'
+        session:
+          $ref: '#/components/schemas/GameSessionState'
+        moveHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameMove'
+        clocks:
+          oneOf:
+            - $ref: '#/components/schemas/MatchClocksDto'
+            - type: 'null'
+        lastSeq:
+          type: integer
+          minimum: 0
+          description: Latest WebSocket `MatchSyncEventDto.sequenceNumber` associated with this snapshot.
+
+    MoveSubmissionDto:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - playerId
+        - expectedTurnNumber
+        - move
+      properties:
+        matchId:
+          type: string
+          example: match_01JCHESS9901
+        playerId:
+          type: string
+          example: player_red_01
+        expectedTurnNumber:
+          type: integer
+          minimum: 1
+        move:
+          $ref: '#/components/schemas/GameMove'
+        clientRequestId:
+          type:
+            - string
+            - 'null'
+          minLength: 8
+          maxLength: 128
+
+    MoveAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - seq
+        - turnNumber
+        - acceptedMove
+        - fen
+        - session
+      properties:
+        matchId:
+          type: string
+        seq:
+          type: integer
+          minimum: 1
+        turnNumber:
+          type: integer
+          minimum: 1
+        acceptedMove:
+          $ref: '#/components/schemas/GameMove'
+        fen:
+          type: string
+        session:
+          $ref: '#/components/schemas/GameSessionState'
+        clocks:
+          oneOf:
+            - $ref: '#/components/schemas/MatchClocksDto'
+            - type: 'null'
+        airDefenseTriggered:
+          type: boolean
+          default: false
+        promotedPieceIds:
+          type: array
+          items:
+            type: string
+          default: []
+
+    ResignMatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type:
+            - string
+            - 'null'
+          maxLength: 256
+
+    MatchReplayResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - mode
+        - initialFen
+        - finalFen
+        - variantConfig
+        - moves
+        - startedAtUtc
+      properties:
+        matchId:
+          type: string
+        mode:
+          $ref: '#/components/schemas/GameMode'
+        initialFen:
+          type: string
+          example: 6c4/1n2fh1hf2/3a2s2a1/2n1gt1tg2/2ie2m2ei/11/11/2IE2M2EI/2N1GT1TG2/3A2S2A1/1N2FH1HF2/6C4 r - - 0 1
+        finalFen:
+          type: string
+        variantConfig:
+          $ref: '#/components/schemas/RuleVariantConfig'
+        winner:
+          oneOf:
+            - $ref: '#/components/schemas/PlayerSide'
+            - type: 'null'
+        victoryReason:
+          oneOf:
+            - $ref: '#/components/schemas/VictoryReason'
+            - type: 'null'
+        redScore:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        blueScore:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameMove'
+        startedAtUtc:
+          type: string
+          format: date-time
+        endedAtUtc:
+          type:
+            - string
+            - 'null'
+          format: date-time
+
+    SyncEventType:
+      type: string
+      enum:
+        - matchCreated
+        - moveAccepted
+        - moveApplied
+        - moveRejected
+        - stateSnapshot
+        - matchEnded
+        - opponentConnected
+        - opponentDisconnected
+        - heartbeat
+
+    MatchSyncEventDto:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - sequenceNumber
+        - eventType
+        - occurredAtUtc
+      properties:
+        matchId:
+          type: string
+        sequenceNumber:
+          type: integer
+          minimum: 0
+          description: Monotonically increasing per-match event sequence number (0 for heartbeat).
+        eventType:
+          $ref: '#/components/schemas/SyncEventType'
+        occurredAtUtc:
+          type: string
+          format: date-time
+        move:
+          oneOf:
+            - $ref: '#/components/schemas/GameMove'
+            - type: 'null'
+        sessionSnapshot:
+          oneOf:
+            - $ref: '#/components/schemas/GameSessionState'
+            - type: 'null'
+        errorMessage:
+          type:
+            - string
+            - 'null'
+
+    MatchSummaryDto:
+      type: object
+      additionalProperties: false
+      required:
+        - matchId
+        - mode
+        - phase
+        - currentTurn
+        - turnNumber
+        - createdAtUtc
+        - updatedAtUtc
+      properties:
+        matchId:
+          type: string
+        mode:
+          $ref: '#/components/schemas/GameMode'
+        phase:
+          $ref: '#/components/schemas/MatchPhase'
+        currentTurn:
+          $ref: '#/components/schemas/PlayerSide'
+        turnNumber:
+          type: integer
+          minimum: 1
+          default: 1
+        redPlayerId:
+          type:
+            - string
+            - 'null'
+        bluePlayerId:
+          type:
+            - string
+            - 'null'
+        winner:
+          oneOf:
+            - $ref: '#/components/schemas/PlayerSide'
+            - type: 'null'
+        victoryReason:
+          oneOf:
+            - $ref: '#/components/schemas/VictoryReason'
+            - type: 'null'
+        createdAtUtc:
+          type: string
+          format: date-time
+        updatedAtUtc:
+          type: string
+          format: date-time

@@ -1,0 +1,576 @@
+{
+  "schemaVersion": 1,
+  "unitScaleMeters": 1.0,
+  "boardGlbPath": "assets/models/board/commander_board_11x12.glb",
+  "boardRootNodeName": "board_root",
+  "boardChildNodes": [
+    "board_frame",
+    "terrain_land",
+    "terrain_sea",
+    "terrain_river",
+    "ford_f",
+    "ford_h",
+    "grid_overlay"
+  ],
+  "boardDimensions": {
+    "files": 11,
+    "ranks": 12,
+    "playableWidthMeters": 10.0,
+    "playableDepthMeters": 11.0,
+    "meshWidthMeters": 11.0,
+    "meshDepthMeters": 12.0,
+    "surfaceY": 0.0
+  },
+  "pieces": [
+    {
+      "assetId": "red_commander",
+      "visualKey": { "type": "commander", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/commander_lod0.glb",
+      "rootNodeName": "piece_commander",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/commander_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/commander_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_commander",
+      "visualKey": { "type": "commander", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/commander_lod0.glb",
+      "rootNodeName": "piece_commander",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/commander_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/commander_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_headquarters",
+      "visualKey": { "type": "headquarters", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/headquarters_lod0.glb",
+      "rootNodeName": "piece_headquarters",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/headquarters_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/headquarters_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_headquarters",
+      "visualKey": { "type": "headquarters", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/headquarters_lod0.glb",
+      "rootNodeName": "piece_headquarters",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/headquarters_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/headquarters_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_infantry",
+      "visualKey": { "type": "infantry", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/infantry_lod0.glb",
+      "rootNodeName": "piece_infantry",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/infantry_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/infantry_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_infantry",
+      "visualKey": { "type": "infantry", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/infantry_lod0.glb",
+      "rootNodeName": "piece_infantry",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/infantry_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/infantry_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_militia",
+      "visualKey": { "type": "militia", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/militia_lod0.glb",
+      "rootNodeName": "piece_militia",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/militia_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/militia_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_militia",
+      "visualKey": { "type": "militia", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/militia_lod0.glb",
+      "rootNodeName": "piece_militia",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/militia_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/militia_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_engineer",
+      "visualKey": { "type": "engineer", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/engineer_lod0.glb",
+      "rootNodeName": "piece_engineer",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/engineer_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/engineer_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_engineer",
+      "visualKey": { "type": "engineer", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/engineer_lod0.glb",
+      "rootNodeName": "piece_engineer",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/engineer_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/engineer_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.25, "roughness": 0.45 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_tank",
+      "visualKey": { "type": "tank", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/tank_lod0.glb",
+      "rootNodeName": "piece_tank",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/tank_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/tank_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_tank",
+      "visualKey": { "type": "tank", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/tank_lod0.glb",
+      "rootNodeName": "piece_tank",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/tank_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/tank_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_artillery",
+      "visualKey": { "type": "artillery", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/artillery_lod0.glb",
+      "rootNodeName": "piece_artillery",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/artillery_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/artillery_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_artillery",
+      "visualKey": { "type": "artillery", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/artillery_lod0.glb",
+      "rootNodeName": "piece_artillery",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/artillery_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/artillery_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_anti_aircraft",
+      "visualKey": { "type": "antiAircraft", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/anti_aircraft_lod0.glb",
+      "rootNodeName": "piece_anti_aircraft",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/anti_aircraft_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/anti_aircraft_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_anti_aircraft",
+      "visualKey": { "type": "antiAircraft", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/anti_aircraft_lod0.glb",
+      "rootNodeName": "piece_anti_aircraft",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/anti_aircraft_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/anti_aircraft_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_missile",
+      "visualKey": { "type": "missile", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/missile_lod0.glb",
+      "rootNodeName": "piece_missile",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/missile_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/missile_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_missile",
+      "visualKey": { "type": "missile", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/missile_lod0.glb",
+      "rootNodeName": "piece_missile",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/missile_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 1200 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/missile_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "",
+      "passengerSockets": [],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_air_force",
+      "visualKey": { "type": "airForce", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/air_force_lod0.glb",
+      "rootNodeName": "piece_air_force",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/air_force_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/air_force_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.40, "roughness": 0.35 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_air_force",
+      "visualKey": { "type": "airForce", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/air_force_lod0.glb",
+      "rootNodeName": "piece_air_force",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/air_force_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/air_force_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.40, "roughness": 0.35 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "red_navy",
+      "visualKey": { "type": "navy", "side": "red", "isHero": false },
+      "glbPath": "assets/models/pieces/navy_lod0.glb",
+      "rootNodeName": "piece_navy",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/navy_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/navy_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#C62828", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#FFB300", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    },
+    {
+      "assetId": "blue_navy",
+      "visualKey": { "type": "navy", "side": "blue", "isHero": false },
+      "glbPath": "assets/models/pieces/navy_lod0.glb",
+      "rootNodeName": "piece_navy",
+      "lodTiers": [
+        { "tier": "lod0", "assetPath": "assets/models/pieces/navy_lod0.glb", "maxDistanceSq": 64.0, "maxTriangles": 3000 },
+        { "tier": "lod1", "assetPath": "assets/models/pieces/navy_lod1.glb", "maxDistanceSq": 400.0, "maxTriangles": 800 }
+      ],
+      "boundingRadius": 0.42,
+      "carrySocketName": "socket_passenger_0",
+      "passengerSockets": ["socket_passenger_0", "socket_passenger_1"],
+      "materialSlots": {
+        "mat_faction_primary": { "baseColorHex": "#1565C0", "metallic": 0.35, "roughness": 0.40 },
+        "mat_faction_accent": { "baseColorHex": "#B0BEC5", "metallic": 0.65, "roughness": 0.30 },
+        "mat_base_pedestal": { "baseColorHex": "#455A64", "metallic": 0.40, "roughness": 0.50 },
+        "mat_neutral_metal": { "baseColorHex": "#37474F", "metallic": 0.85, "roughness": 0.35 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 0.0 }
+      },
+      "heroicMaterialOverrides": {
+        "mat_base_pedestal": { "baseColorHex": "#FFD54F", "metallic": 0.85, "roughness": 0.20 },
+        "mat_heroic_emissive": { "baseColorHex": "#FFD54F", "emissiveHex": "#FFD54F", "emissiveIntensity": 1.5 }
+      },
+      "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
+    }
+  ]
+}
