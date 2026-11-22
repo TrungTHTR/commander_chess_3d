@@ -10,6 +10,7 @@ import 'package:commander_chess_3d/features/game/models/asset_manifest_model.dar
 import 'package:commander_chess_3d/features/game/models/board_coord.dart';
 import 'package:commander_chess_3d/features/game/models/piece_model.dart';
 import 'package:commander_chess_3d/features/game/presentation/screens/commander_game_screen.dart';
+import 'package:commander_chess_3d/features/game/presentation/screens/main_menu_screen.dart';
 import 'package:commander_chess_3d/features/game/presentation/theme/commander_theme.dart';
 import 'package:commander_chess_3d/features/game/presentation/widgets/board_3d_viewport.dart';
 import 'package:commander_chess_3d/features/game/state/game_hud_snapshot.dart';
@@ -93,7 +94,7 @@ void main() {
             expect(find.byType(CommanderGameScreen), findsOneWidget);
             expect(find.byKey(CommanderGameScreen.viewportKey), findsOneWidget);
             expect(find.text('Commander Chess 3D • Cờ Tư Lệnh'), findsOneWidget);
-            expect(find.text('Red • Turn 1'), findsOneWidget);
+            expect(find.text('Red (VN) • Turn 1'), findsOneWidget);
 
             // Verify RepaintBoundary + CustomPaint(Board3DCustomPainter) inside Board3DViewport.
             final viewportFinder = find.byKey(CommanderGameScreen.viewportKey);
@@ -135,10 +136,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 32));
 
       expect(tester.takeException(), isNull);
+      expect(find.byType(MainMenuScreen), findsOneWidget);
 
       // Initially Dark mode in CommanderChessApp.
       var app = tester.widget<MaterialApp>(find.byType(MaterialApp));
       expect(app.themeMode, ThemeMode.dark);
+
+      // Enter game from Main Menu via Start button.
+      await tester.tap(find.byKey(MainMenuScreen.startButtonKey));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(CommanderGameScreen), findsOneWidget);
 
       // Toggle theme -> Light mode.
       await tester.tap(find.byKey(CommanderGameScreen.themeToggleButtonKey));
@@ -181,14 +189,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 32));
 
-      expect(find.text('Blue • Turn 2'), findsOneWidget);
+      expect(find.text('Blue (USA) • Turn 2'), findsOneWidget);
       expect(find.text('Blue to move'), findsOneWidget);
 
       // Tap Undo -> rolls back to Red Turn 1.
       await tester.tap(find.byKey(CommanderGameScreen.undoButtonKey));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 32));
-      expect(find.text('Red • Turn 1'), findsOneWidget);
+      expect(find.text('Red (VN) • Turn 1'), findsOneWidget);
 
       // Make move again, then tap New Match -> resets to fresh Turn 1.
       await tester.tapAt(g5Screen);
@@ -196,12 +204,12 @@ void main() {
       await tester.tapAt(g6Screen);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 32));
-      expect(find.text('Blue • Turn 2'), findsOneWidget);
+      expect(find.text('Blue (USA) • Turn 2'), findsOneWidget);
 
       await tester.tap(find.byKey(CommanderGameScreen.newMatchButtonKey));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 32));
-      expect(find.text('Red • Turn 1'), findsOneWidget);
+      expect(find.text('Red (VN) • Turn 1'), findsOneWidget);
       expect(find.text('Red to move'), findsOneWidget);
       expect(tester.takeException(), isNull);
 

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../models/game_state_model.dart';
 import '../../models/piece_model.dart';
 import '../../state/game_hud_snapshot.dart';
 import '../theme/commander_theme.dart';
@@ -20,9 +21,13 @@ final class GameHudOverlay extends StatelessWidget {
     required this.onToggleTheme,
     required this.onSelectCameraPreset,
     required this.onDismissError,
+    this.onBackToMenu,
     this.viewport,
   });
 
+  static const Key backToMenuButtonKey = ValueKey<String>(
+    'hud_back_to_menu_button',
+  );
   static const Key undoButtonKey = ValueKey<String>('hud_undo_button');
   static const Key newMatchButtonKey = ValueKey<String>('hud_new_match_button');
   static const Key themeToggleButtonKey = ValueKey<String>(
@@ -42,6 +47,7 @@ final class GameHudOverlay extends StatelessWidget {
   final VoidCallback onToggleTheme;
   final ValueChanged<OrbitCameraPreset> onSelectCameraPreset;
   final VoidCallback onDismissError;
+  final VoidCallback? onBackToMenu;
   final Widget? viewport;
 
   @override
@@ -72,6 +78,7 @@ final class GameHudOverlay extends StatelessWidget {
                   onUndo: onUndo,
                   onNewMatch: onNewMatch,
                   onToggleTheme: onToggleTheme,
+                  onBackToMenu: onBackToMenu,
                 ),
               ),
               Expanded(child: viewport!),
@@ -123,6 +130,7 @@ final class GameHudOverlay extends StatelessWidget {
                 onUndo: onUndo,
                 onNewMatch: onNewMatch,
                 onToggleTheme: onToggleTheme,
+                onBackToMenu: onBackToMenu,
               ),
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -161,6 +169,7 @@ final class _TopHudBar extends StatelessWidget {
     required this.onUndo,
     required this.onNewMatch,
     required this.onToggleTheme,
+    required this.onBackToMenu,
   });
 
   final GameHudSnapshot hud;
@@ -170,17 +179,24 @@ final class _TopHudBar extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onNewMatch;
   final VoidCallback onToggleTheme;
+  final VoidCallback? onBackToMenu;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final canUndo = hud.canUndo && !hud.isBusy;
     final canNewMatch = !hud.isBusy;
+    final isFinished = hud.session.phase == MatchPhase.finished;
+    final newMatchLabel = isFinished ? 'Rematch' : 'New Match';
     final isDark =
         themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system && theme.brightness == Brightness.dark);
 
     if (isWide) {
+      final matchupText = hud.isMirrorMatch
+          ? '${hud.matchupSummary} (Mirror)'
+          : hud.matchupSummary;
+
       return Card(
         margin: EdgeInsets.zero,
         child: Padding(
@@ -190,9 +206,16 @@ final class _TopHudBar extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
+              IconButton(
+                key: GameHudOverlay.backToMenuButtonKey,
+                tooltip: 'Back to Menu',
+                onPressed: onBackToMenu,
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 4),
               _TurnBadge(
-                side: hud.session.currentTurn,
-                turnNumber: hud.session.turnNumber,
+                hud: hud,
+                isCompact: false,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -209,13 +232,31 @@ final class _TopHudBar extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      hud.statusMessage,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            hud.statusMessage,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '• $matchupText',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -239,7 +280,7 @@ final class _TopHudBar extends StatelessWidget {
                 key: GameHudOverlay.newMatchButtonKey,
                 onPressed: canNewMatch ? onNewMatch : null,
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('New Match'),
+                label: Text(newMatchLabel),
               ),
               const SizedBox(width: 4),
               IconButton(
@@ -269,6 +310,18 @@ final class _TopHudBar extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
+                IconButton(
+                  key: GameHudOverlay.backToMenuButtonKey,
+                  tooltip: 'Back to Menu',
+                  visualDensity: VisualDensity.compact,
+                  padding: isCompact ? const EdgeInsets.all(4) : null,
+                  constraints: isCompact
+                      ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                      : null,
+                  onPressed: onBackToMenu,
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                ),
+                const SizedBox(width: 2),
                 Expanded(
                   child: Text(
                     'Commander Chess 3D • Cờ Tư Lệnh',
@@ -292,7 +345,7 @@ final class _TopHudBar extends StatelessWidget {
                 ),
                 IconButton(
                   key: GameHudOverlay.newMatchButtonKey,
-                  tooltip: 'New Match',
+                  tooltip: newMatchLabel,
                   visualDensity: VisualDensity.compact,
                   padding: isCompact ? const EdgeInsets.all(4) : null,
                   constraints: isCompact
@@ -323,8 +376,8 @@ final class _TopHudBar extends StatelessWidget {
             Row(
               children: <Widget>[
                 _TurnBadge(
-                  side: hud.session.currentTurn,
-                  turnNumber: hud.session.turnNumber,
+                  hud: hud,
+                  isCompact: isCompact,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -356,44 +409,61 @@ final class _TopHudBar extends StatelessWidget {
 }
 
 final class _TurnBadge extends StatelessWidget {
-  const _TurnBadge({required this.side, required this.turnNumber});
+  const _TurnBadge({required this.hud, required this.isCompact});
 
-  final PlayerSide side;
-  final int turnNumber;
+  final GameHudSnapshot hud;
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
+    final side = hud.session.currentTurn;
+    final turnNumber = hud.session.turnNumber;
     final isRed = side == PlayerSide.red;
-    final factionColor = isRed
+    final sideColor = isRed
         ? CommanderTheme.redFaction
         : CommanderTheme.blueFaction;
-    final label = isRed ? 'Red • Turn $turnNumber' : 'Blue • Turn $turnNumber';
+    final factionPalette = hud.factionDefinitionForSide(side).palette;
+    final label = '${hud.sideFactionShortLabel(side)} • Turn $turnNumber';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: factionColor.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: factionColor.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: factionColor,
-              shape: BoxShape.circle,
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: isCompact ? 190 : 280),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 8 : 10,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: sideColor.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: sideColor.withValues(alpha: 0.7)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: sideColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Color(factionPalette.accentHex),
+                  width: 1.2,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -517,11 +587,20 @@ final class _SelectedPieceInfo extends StatelessWidget {
     final theme = Theme.of(context);
     final piece = selectedPiece;
     if (piece == null) {
-      final sideLabel = hud.session.currentTurn == PlayerSide.red
-          ? 'Red'
-          : 'Blue';
+      if (hud.session.phase == MatchPhase.finished) {
+        return Text(
+          'Match finished • ${hud.statusMessage} • Tap Rematch to play again',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        );
+      }
+
+      final sideFaction = hud.sideFactionLabel(hud.session.currentTurn);
       return Text(
-        'Tap a $sideLabel unit to inspect legal moves • Drag to orbit, pinch or scroll to zoom',
+        'Tap a $sideFaction unit to inspect legal moves • Drag to orbit, pinch or scroll to zoom',
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
@@ -533,9 +612,13 @@ final class _SelectedPieceInfo extends StatelessWidget {
     final factionColor = piece.side == PlayerSide.red
         ? CommanderTheme.redFaction
         : CommanderTheme.blueFaction;
+    final unitProfile = hud.unitProfileFor(piece);
     final moveCount = hud.legalHints.length;
     final moveWord = moveCount == 1 ? 'move' : 'moves';
-    final detailParts = <String>['$moveCount legal $moveWord'];
+    final detailParts = <String>[
+      hud.sideFactionShortLabel(piece.side),
+      '$moveCount legal $moveWord',
+    ];
 
     if (piece.carriedPieces.isNotEmpty) {
       final passengers = piece.carriedPieces
@@ -567,7 +650,7 @@ final class _SelectedPieceInfo extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                '${piece.type.displayNameVi} • ${piece.type.displayNameEn}',
+                '${unitProfile.unitDesignation} • ${piece.type.displayNameVi} • ${piece.type.displayNameEn}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleSmall?.copyWith(

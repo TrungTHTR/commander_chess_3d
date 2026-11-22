@@ -418,6 +418,21 @@ components:
         - timeout
         - draw
 
+    FactionId:
+      type: string
+      enum:
+        - usa
+        - vietnam
+        - sovietUnion
+        - unitedKingdom
+        - germany
+        - france
+        - china
+        - japan
+        - southKorea
+        - india
+        - israel
+
     BoardCoord:
       type: object
       additionalProperties: false
@@ -593,6 +608,12 @@ components:
           minimum: 1
         variantConfig:
           $ref: '#/components/schemas/RuleVariantConfig'
+        redFaction:
+          $ref: '#/components/schemas/FactionId'
+          default: vietnam
+        blueFaction:
+          $ref: '#/components/schemas/FactionId'
+          default: usa
 
     CreateMatchRequestDto:
       type: object

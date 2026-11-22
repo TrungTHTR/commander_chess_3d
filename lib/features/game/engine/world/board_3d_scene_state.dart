@@ -119,6 +119,10 @@ final class RenderPieceNode {
     this.carriedVisualKeys = const <PieceVisualKey>[],
     this.isSelected = false,
     this.animClip = PieceAnimClip.idle,
+    this.animProgress = 0.0,
+    this.phaseSeed = 0.0,
+    this.movePitchRadians = 0.0,
+    this.moveRollRadians = 0.0,
   });
 
   final String pieceId;
@@ -129,6 +133,10 @@ final class RenderPieceNode {
   final List<PieceVisualKey> carriedVisualKeys;
   final bool isSelected;
   final PieceAnimClip animClip;
+  final double animProgress;
+  final double phaseSeed;
+  final double movePitchRadians;
+  final double moveRollRadians;
 }
 
 /// Immutable per-frame scene snapshot consumed by [BoardSceneRenderer].

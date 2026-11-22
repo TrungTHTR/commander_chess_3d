@@ -5,15 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/result/result.dart';
 import '../../../core/time/clock.dart';
 import '../models/asset_manifest_model.dart';
+import '../models/faction_model.dart';
 import '../repositories/asset_manifest_loader.dart';
 import '../repositories/game_repository.dart';
 import '../repositories/multiplayer_transport.dart';
+import '../repositories/settings_repository.dart';
 import '../rules/board_topology.dart';
 import '../rules/commander_rules_engine.dart';
 import '../rules/usecases/start_match_usecase.dart';
 import '../rules/usecases/submit_move_usecase.dart';
 import 'game_hud_snapshot.dart';
 import 'game_session_notifier.dart';
+import 'game_settings_notifier.dart';
 
 /// Deterministic UTC clock provider (override with [FixedClock] in tests).
 final clockProvider = Provider<Clock>((ref) {
@@ -77,6 +80,19 @@ final submitMoveUseCaseProvider = Provider<SubmitMoveUseCase>((ref) {
     repository: ref.watch(gameRepositoryProvider),
   );
 });
+
+/// Settings persistence repository provider (override in tests or platform storage).
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  final repo = InMemorySettingsRepository();
+  ref.onDispose(repo.dispose);
+  return repo;
+});
+
+/// Cold Riverpod 3.x notifier provider owning [GameSettings].
+final gameSettingsProvider =
+    NotifierProvider<GameSettingsNotifier, GameSettings>(
+  GameSettingsNotifier.new,
+);
 
 /// Cold Riverpod 3.x notifier provider owning [GameHudSnapshot].
 final gameSessionNotifierProvider =

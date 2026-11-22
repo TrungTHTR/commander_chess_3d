@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'faction_model.dart';
 import 'piece_model.dart';
 
 /// Standardized NLA animation clip names matching `docs/BLENDER_ASSET_CONTRACT.md`.
@@ -29,21 +30,26 @@ final class PieceVisualKey extends Equatable {
     required this.type,
     required this.side,
     this.isHero = false,
+    this.faction,
   });
 
   final PieceType type;
   final PlayerSide side;
   final bool isHero;
+  final FactionId? faction;
 
   PieceVisualKey copyWith({
     PieceType? type,
     PlayerSide? side,
     bool? isHero,
+    FactionId? faction,
+    bool clearFaction = false,
   }) {
     return PieceVisualKey(
       type: type ?? this.type,
       side: side ?? this.side,
       isHero: isHero ?? this.isHero,
+      faction: clearFaction ? null : (faction ?? this.faction),
     );
   }
 
@@ -54,6 +60,9 @@ final class PieceVisualKey extends Equatable {
       ),
       side: PlayerSide.fromJsonValue(json['side']),
       isHero: _asBool(json['isHero'] ?? json['is_hero']),
+      faction: FactionId.tryFromJsonValue(
+        json['faction'] ?? json['factionId'] ?? json['faction_id'],
+      ),
     );
   }
 
@@ -61,6 +70,7 @@ final class PieceVisualKey extends Equatable {
         'type': type.name,
         'side': side.name,
         'isHero': isHero,
+        if (faction != null) 'faction': faction!.code,
       };
 
   static bool _asBool(Object? raw, [bool fallback = false]) {
@@ -74,7 +84,7 @@ final class PieceVisualKey extends Equatable {
   }
 
   @override
-  List<Object?> get props => <Object?>[type, side, isHero];
+  List<Object?> get props => <Object?>[type, side, isHero, faction];
 }
 
 /// Level-of-Detail mesh entry for distance-based LOD0/LOD1 selection.
@@ -474,6 +484,7 @@ final class AssetManifest extends Equatable {
     required this.boardGlbPath,
     this.boardRootNodeName = 'board_root',
     required this.pieces,
+    this.factionMeshes = const <FactionId, Map<PieceType, String>>{},
   });
 
   final int schemaVersion;
@@ -481,17 +492,47 @@ final class AssetManifest extends Equatable {
   final String boardGlbPath;
   final String boardRootNodeName;
   final List<MeshAssetDescriptor> pieces;
+  final Map<FactionId, Map<PieceType, String>> factionMeshes;
 
-  /// Resolves exact `(type, side, isHero)` match, falling back to non-hero
-  /// `(type, side, false)` if a dedicated hero mesh entry is omitted.
+  /// Returns the faction-specific `.glb` path for `(faction, type)`, or `null`.
+  String? findFactionMeshPath(FactionId faction, PieceType type) =>
+      factionMeshes[faction]?[type];
+
+  /// Resolves the best `.glb` path for [key], preferring faction-specific meshes
+  /// when [key.faction] is provided and falling back to base [findPiece].
+  String? resolveGlbPath(PieceVisualKey key) {
+    if (key.faction != null) {
+      final factionPath = findFactionMeshPath(key.faction!, key.type);
+      if (factionPath != null && factionPath.isNotEmpty) {
+        return factionPath;
+      }
+    }
+    return findPiece(key)?.glbPath;
+  }
+
+  /// Resolves exact `(type, side, isHero, faction)` match, falling back to
+  /// non-hero `(type, side, false, faction)` and then `faction == null` base
+  /// descriptors if dedicated faction/hero entries are omitted.
   MeshAssetDescriptor? findPiece(PieceVisualKey key) {
     for (final piece in pieces) {
       if (piece.visualKey == key) return piece;
     }
     if (key.isHero) {
-      final baseKey = key.copyWith(isHero: false);
+      final nonHeroKey = key.copyWith(isHero: false);
       for (final piece in pieces) {
-        if (piece.visualKey == baseKey) return piece;
+        if (piece.visualKey == nonHeroKey) return piece;
+      }
+    }
+    if (key.faction != null) {
+      final baseFactionKey = key.copyWith(clearFaction: true);
+      for (final piece in pieces) {
+        if (piece.visualKey == baseFactionKey) return piece;
+      }
+      if (key.isHero) {
+        final baseNonHeroKey = key.copyWith(isHero: false, clearFaction: true);
+        for (final piece in pieces) {
+          if (piece.visualKey == baseNonHeroKey) return piece;
+        }
       }
     }
     return null;
@@ -503,6 +544,7 @@ final class AssetManifest extends Equatable {
     String? boardGlbPath,
     String? boardRootNodeName,
     List<MeshAssetDescriptor>? pieces,
+    Map<FactionId, Map<PieceType, String>>? factionMeshes,
   }) {
     return AssetManifest(
       schemaVersion: schemaVersion ?? this.schemaVersion,
@@ -512,6 +554,9 @@ final class AssetManifest extends Equatable {
       pieces: pieces != null
           ? List<MeshAssetDescriptor>.unmodifiable(pieces)
           : this.pieces,
+      factionMeshes: factionMeshes != null
+          ? _freezeFactionMeshes(factionMeshes)
+          : this.factionMeshes,
     );
   }
 
@@ -526,6 +571,29 @@ final class AssetManifest extends Equatable {
           parsedPieces.add(
             MeshAssetDescriptor.fromJson(Map<String, dynamic>.from(item)),
           );
+        }
+      }
+    }
+
+    final parsedFactionMeshes = <FactionId, Map<PieceType, String>>{};
+    final rawFactionMeshes = json['factionMeshes'] ?? json['faction_meshes'];
+    if (rawFactionMeshes is Map) {
+      for (final outerEntry in rawFactionMeshes.entries) {
+        final faction = FactionId.tryFromJsonValue(outerEntry.key);
+        if (faction == null || outerEntry.value is! Map) continue;
+        final innerMap = <PieceType, String>{};
+        for (final innerEntry in (outerEntry.value as Map).entries) {
+          final pieceType = PieceType.tryFromJsonValue(innerEntry.key);
+          final rawPath = innerEntry.value;
+          if (pieceType != null &&
+              rawPath is String &&
+              rawPath.trim().isNotEmpty) {
+            innerMap[pieceType] = rawPath.trim();
+          }
+        }
+        if (innerMap.isNotEmpty) {
+          parsedFactionMeshes[faction] =
+              Map<PieceType, String>.unmodifiable(innerMap);
         }
       }
     }
@@ -570,6 +638,8 @@ final class AssetManifest extends Equatable {
         'board_root',
       ),
       pieces: List<MeshAssetDescriptor>.unmodifiable(parsedPieces),
+      factionMeshes:
+          Map<FactionId, Map<PieceType, String>>.unmodifiable(parsedFactionMeshes),
     );
   }
 
@@ -579,7 +649,26 @@ final class AssetManifest extends Equatable {
         'boardGlbPath': boardGlbPath,
         'boardRootNodeName': boardRootNodeName,
         'pieces': pieces.map((e) => e.toJson()).toList(growable: false),
+        if (factionMeshes.isNotEmpty)
+          'factionMeshes': <String, dynamic>{
+            for (final entry in factionMeshes.entries)
+              entry.key.code: <String, String>{
+                for (final pieceEntry in entry.value.entries)
+                  pieceEntry.key.snakeCaseName: pieceEntry.value,
+              },
+          },
       };
+
+  static Map<FactionId, Map<PieceType, String>> _freezeFactionMeshes(
+    Map<FactionId, Map<PieceType, String>> source,
+  ) {
+    return Map<FactionId, Map<PieceType, String>>.unmodifiable(
+      <FactionId, Map<PieceType, String>>{
+        for (final entry in source.entries)
+          entry.key: Map<PieceType, String>.unmodifiable(entry.value),
+      },
+    );
+  }
 
   static String _asString(Object? raw, String fallback) {
     if (raw == null) return fallback;
@@ -606,5 +695,6 @@ final class AssetManifest extends Equatable {
         boardGlbPath,
         boardRootNodeName,
         pieces,
+        factionMeshes,
       ];
 }

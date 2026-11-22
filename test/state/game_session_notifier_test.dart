@@ -4,9 +4,11 @@ import 'package:commander_chess_3d/core/result/app_failure.dart';
 import 'package:commander_chess_3d/core/result/result.dart';
 import 'package:commander_chess_3d/core/time/clock.dart';
 import 'package:commander_chess_3d/features/game/models/board_coord.dart';
+import 'package:commander_chess_3d/features/game/models/faction_model.dart';
 import 'package:commander_chess_3d/features/game/models/game_state_model.dart';
 import 'package:commander_chess_3d/features/game/models/piece_model.dart';
 import 'package:commander_chess_3d/features/game/repositories/game_repository.dart';
+import 'package:commander_chess_3d/features/game/repositories/settings_repository.dart';
 import 'package:commander_chess_3d/features/game/state/game_hud_snapshot.dart';
 import 'package:commander_chess_3d/features/game/state/game_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -291,6 +293,270 @@ void main() {
         container.read(gameSessionNotifierProvider).errorMessage,
         'Simulated create failure',
       );
+    });
+  });
+
+  group('Faction & Settings Integration (M3)', () {
+    test('build() picks up default gameSettingsProvider factions and camera preset',
+        () async {
+      final fixedClock = FixedClock(DateTime.utc(2026, 11, 21, 9, 0, 0));
+      final container = ProviderContainer(
+        overrides: [clockProvider.overrideWithValue(fixedClock)],
+      );
+      addTearDown(container.dispose);
+
+      final snapshot = container.read(gameSessionNotifierProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(snapshot.session.redFaction, FactionId.vietnam);
+      expect(snapshot.session.blueFaction, FactionId.usa);
+      expect(snapshot.redFaction, FactionId.vietnam);
+      expect(snapshot.blueFaction, FactionId.usa);
+      expect(snapshot.cameraPreset, OrbitCameraPreset.redCommander);
+      expect(snapshot.statusMessage, 'Red to move');
+    });
+
+    test('build() picks up pre-configured gameSettingsProvider factions and all 4 camera preset mappings',
+        () async {
+      final cases = <(String, OrbitCameraPreset)>[
+        ('classic', OrbitCameraPreset.redCommander),
+        ('high', OrbitCameraPreset.tacticalTop),
+        ('side', OrbitCameraPreset.sideOverview),
+        ('top', OrbitCameraPreset.blueCommander),
+      ];
+
+      for (final (presetKey, expectedOrbit) in cases) {
+        final fixedClock = FixedClock(DateTime.utc(2026, 11, 21, 9, 5, 0));
+        final container = ProviderContainer(
+          overrides: [clockProvider.overrideWithValue(fixedClock)],
+        );
+
+        final settingsNotifier = container.read(gameSettingsProvider.notifier);
+        await settingsNotifier.selectRedFaction(FactionId.unitedKingdom);
+        await settingsNotifier.selectBlueFaction(FactionId.france);
+        await settingsNotifier.setDefaultCameraPreset(presetKey);
+
+        final snapshot = container.read(gameSessionNotifierProvider);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(snapshot.session.redFaction, FactionId.unitedKingdom);
+        expect(snapshot.session.blueFaction, FactionId.france);
+        expect(snapshot.redFaction, FactionId.unitedKingdom);
+        expect(snapshot.blueFaction, FactionId.france);
+        expect(snapshot.cameraPreset, expectedOrbit);
+        expect(snapshot.statusMessage, 'Red to move');
+
+        container.dispose();
+      }
+    });
+
+    test('startNewMatch() reads updated settings, supports explicit overrides without mutating settings, and supports mirror match',
+        () async {
+      final fixedClock = FixedClock(DateTime.utc(2026, 11, 21, 9, 10, 0));
+      final container = ProviderContainer(
+        overrides: [clockProvider.overrideWithValue(fixedClock)],
+      );
+      addTearDown(container.dispose);
+
+      final sessionNotifier =
+          container.read(gameSessionNotifierProvider.notifier);
+      final settingsNotifier = container.read(gameSettingsProvider.notifier);
+      await Future<void>.delayed(Duration.zero);
+
+      // Update settings mid-session and start new match with zero faction args.
+      await settingsNotifier.selectRedFaction(FactionId.sovietUnion);
+      await settingsNotifier.selectBlueFaction(FactionId.germany);
+      await settingsNotifier.setDefaultCameraPreset('side');
+
+      // Active match must NOT have been wiped by settings edits prior to startNewMatch.
+      expect(
+        container.read(gameSessionNotifierProvider).session.redFaction,
+        FactionId.vietnam,
+      );
+
+      fixedClock.advance(const Duration(seconds: 2));
+      await sessionNotifier.startNewMatch();
+
+      final fromSettings = container.read(gameSessionNotifierProvider);
+      expect(fromSettings.session.redFaction, FactionId.sovietUnion);
+      expect(fromSettings.session.blueFaction, FactionId.germany);
+      expect(fromSettings.cameraPreset, OrbitCameraPreset.sideOverview);
+      expect(fromSettings.statusMessage, 'Red to move');
+
+      // Explicit override args take precedence without mutating gameSettingsProvider.
+      fixedClock.advance(const Duration(seconds: 2));
+      await sessionNotifier.startNewMatch(
+        redFaction: FactionId.japan,
+        blueFaction: FactionId.india,
+        cameraPreset: OrbitCameraPreset.blueCommander,
+      );
+
+      final overridden = container.read(gameSessionNotifierProvider);
+      expect(overridden.session.redFaction, FactionId.japan);
+      expect(overridden.session.blueFaction, FactionId.india);
+      expect(overridden.cameraPreset, OrbitCameraPreset.blueCommander);
+      expect(
+        container.read(gameSettingsProvider).redFaction,
+        FactionId.sovietUnion,
+      );
+      expect(
+        container.read(gameSettingsProvider).blueFaction,
+        FactionId.germany,
+      );
+
+      // Mirror match via startNewMatch.
+      fixedClock.advance(const Duration(seconds: 2));
+      await sessionNotifier.startNewMatch(
+        redFaction: FactionId.china,
+        blueFaction: FactionId.china,
+      );
+
+      final mirror = container.read(gameSessionNotifierProvider);
+      expect(mirror.session.redFaction, FactionId.china);
+      expect(mirror.session.blueFaction, FactionId.china);
+      expect(mirror.isMirrorMatch, isTrue);
+      expect(mirror.session.pieces, hasLength(38));
+    });
+
+    test('updateMatchFactions updates active session without altering turn or undo history and preserves across moves',
+        () async {
+      final fixedClock = FixedClock(DateTime.utc(2026, 11, 21, 9, 15, 0));
+      final container = ProviderContainer(
+        overrides: [clockProvider.overrideWithValue(fixedClock)],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(gameSessionNotifierProvider.notifier);
+      await Future<void>.delayed(Duration.zero);
+
+      notifier.updateMatchFactions(FactionId.israel, FactionId.israel);
+      final updated = container.read(gameSessionNotifierProvider);
+      expect(updated.session.redFaction, FactionId.israel);
+      expect(updated.session.blueFaction, FactionId.israel);
+      expect(updated.isMirrorMatch, isTrue);
+      expect(updated.session.turnNumber, 1);
+      expect(updated.session.moveHistory, isEmpty);
+      expect(updated.canUndo, isFalse);
+      expect(updated.session.pieces, hasLength(38));
+
+      // Play a legal move and verify updated factions carry forward.
+      notifier.selectCoord(BoardCoord.fromAlgebraic('g5'));
+      await notifier.attemptMoveTo(BoardCoord.fromAlgebraic('g6'));
+
+      final afterMove = container.read(gameSessionNotifierProvider);
+      expect(afterMove.session.redFaction, FactionId.israel);
+      expect(afterMove.session.blueFaction, FactionId.israel);
+      expect(afterMove.session.turnNumber, 2);
+      expect(afterMove.statusMessage, 'Blue to move');
+    });
+
+    test('undoLastMove preserves non-default and mid-match updated factions',
+        () async {
+      final fixedClock = FixedClock(DateTime.utc(2026, 11, 21, 9, 20, 0));
+      final container = ProviderContainer(
+        overrides: [clockProvider.overrideWithValue(fixedClock)],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(gameSessionNotifierProvider.notifier);
+      await Future<void>.delayed(Duration.zero);
+
+      await notifier.startNewMatch(
+        redFaction: FactionId.unitedKingdom,
+        blueFaction: FactionId.france,
+      );
+
+      notifier.selectCoord(BoardCoord.fromAlgebraic('g5'));
+      await notifier.attemptMoveTo(BoardCoord.fromAlgebraic('g6'));
+      expect(
+        container.read(gameSessionNotifierProvider).session.turnNumber,
+        2,
+      );
+
+      await notifier.undoLastMove();
+      final afterFirstUndo = container.read(gameSessionNotifierProvider);
+      expect(afterFirstUndo.session.turnNumber, 1);
+      expect(afterFirstUndo.session.redFaction, FactionId.unitedKingdom);
+      expect(afterFirstUndo.session.blueFaction, FactionId.france);
+      expect(afterFirstUndo.canUndo, isFalse);
+
+      // Also verify mid-match updateMatchFactions survives undoLastMove.
+      notifier.updateMatchFactions(FactionId.germany, FactionId.japan);
+      notifier.selectCoord(BoardCoord.fromAlgebraic('g5'));
+      await notifier.attemptMoveTo(BoardCoord.fromAlgebraic('g6'));
+      notifier.selectCoord(BoardCoord.fromAlgebraic('c8'));
+      await notifier.attemptMoveTo(BoardCoord.fromAlgebraic('c7'));
+
+      await notifier.undoLastMove();
+      final afterSecondUndo = container.read(gameSessionNotifierProvider);
+      expect(afterSecondUndo.session.turnNumber, 2);
+      expect(afterSecondUndo.session.redFaction, FactionId.germany);
+      expect(afterSecondUndo.session.blueFaction, FactionId.japan);
+    });
+
+    test('GameHudSnapshot exposes faction metadata helpers and copyWith/props while keeping statusMessage intact',
+        () {
+      final fixedClock = FixedClock(DateTime.utc(2026, 11, 21, 9, 25, 0));
+      final container = ProviderContainer(
+        overrides: [clockProvider.overrideWithValue(fixedClock)],
+      );
+      addTearDown(container.dispose);
+
+      final snapshot = container.read(gameSessionNotifierProvider);
+      expect(snapshot.statusMessage, 'Red to move');
+      expect(snapshot.sideLabel(PlayerSide.red), 'Red');
+      expect(snapshot.sideLabel(PlayerSide.blue), 'Blue');
+      expect(snapshot.sideFactionLabel(PlayerSide.red), 'Red • Vietnam');
+      expect(
+        snapshot.sideFactionLabel(PlayerSide.blue),
+        'Blue • United States',
+      );
+      expect(snapshot.sideFactionShortLabel(PlayerSide.red), 'Red (VN)');
+      expect(snapshot.sideFactionShortLabel(PlayerSide.blue), 'Blue (USA)');
+      expect(snapshot.matchupSummary, 'Vietnam vs United States');
+      expect(snapshot.redFactionDefinition.id, FactionId.vietnam);
+      expect(snapshot.blueFactionDefinition.id, FactionId.usa);
+      expect(
+        snapshot.factionDefinitionForSide(PlayerSide.red).id,
+        FactionId.vietnam,
+      );
+
+      final redMilitia =
+          snapshot.session.pieceAt(BoardCoord.fromAlgebraic('g5'))!;
+      final profile = snapshot.unitProfileFor(redMilitia);
+      expect(profile.faction, FactionId.vietnam);
+      expect(profile.pieceType, PieceType.militia);
+
+      final overridden = snapshot.copyWith(
+        redFaction: FactionId.southKorea,
+        blueFaction: FactionId.southKorea,
+      );
+      expect(overridden, isNot(equals(snapshot)));
+      expect(overridden.isMirrorMatch, isTrue);
+      expect(overridden.matchupSummary, 'South Korea vs South Korea');
+
+      final cleared = overridden.copyWith(clearFactionOverrides: true);
+      expect(cleared.redFaction, FactionId.vietnam);
+      expect(cleared.blueFaction, FactionId.usa);
+      expect(cleared, equals(snapshot));
+    });
+
+    test('disposes both gameRepositoryProvider and settingsRepositoryProvider via ref.onDispose',
+        () {
+      final container = ProviderContainer();
+      final gameRepo =
+          container.read(gameRepositoryProvider) as InMemoryGameRepository;
+      final settingsRepo = container.read(settingsRepositoryProvider)
+          as InMemorySettingsRepository;
+      container.read(gameSettingsProvider);
+      container.read(gameSessionNotifierProvider);
+
+      expect(gameRepo.isDisposed, isFalse);
+      expect(settingsRepo.isDisposed, isFalse);
+
+      container.dispose();
+      expect(gameRepo.isDisposed, isTrue);
+      expect(settingsRepo.isDisposed, isTrue);
     });
   });
 }

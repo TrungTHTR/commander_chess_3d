@@ -572,5 +572,150 @@
       },
       "animations": { "idle": "idle", "select": "select", "move": "move", "attack": "attack", "capture": "capture", "promote": "promote", "defeat": "defeat" }
     }
-  ]
+  ],
+  "factionMeshes": {
+    "usa": {
+      "commander": "assets/models/pieces/usa_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/usa_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/usa_infantry_lod0.glb",
+      "militia": "assets/models/pieces/usa_militia_lod0.glb",
+      "engineer": "assets/models/pieces/usa_engineer_lod0.glb",
+      "tank": "assets/models/pieces/usa_tank_lod0.glb",
+      "artillery": "assets/models/pieces/usa_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/usa_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/usa_missile_lod0.glb",
+      "air_force": "assets/models/pieces/usa_air_force_lod0.glb",
+      "navy": "assets/models/pieces/usa_navy_lod0.glb"
+    },
+    "vietnam": {
+      "commander": "assets/models/pieces/vietnam_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/vietnam_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/vietnam_infantry_lod0.glb",
+      "militia": "assets/models/pieces/vietnam_militia_lod0.glb",
+      "engineer": "assets/models/pieces/vietnam_engineer_lod0.glb",
+      "tank": "assets/models/pieces/vietnam_tank_lod0.glb",
+      "artillery": "assets/models/pieces/vietnam_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/vietnam_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/vietnam_missile_lod0.glb",
+      "air_force": "assets/models/pieces/vietnam_air_force_lod0.glb",
+      "navy": "assets/models/pieces/vietnam_navy_lod0.glb"
+    },
+    "soviet_union": {
+      "commander": "assets/models/pieces/soviet_union_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/soviet_union_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/soviet_union_infantry_lod0.glb",
+      "militia": "assets/models/pieces/soviet_union_militia_lod0.glb",
+      "engineer": "assets/models/pieces/soviet_union_engineer_lod0.glb",
+      "tank": "assets/models/pieces/soviet_union_tank_lod0.glb",
+      "artillery": "assets/models/pieces/soviet_union_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/soviet_union_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/soviet_union_missile_lod0.glb",
+      "air_force": "assets/models/pieces/soviet_union_air_force_lod0.glb",
+      "navy": "assets/models/pieces/soviet_union_navy_lod0.glb"
+    },
+    "united_kingdom": {
+      "commander": "assets/models/pieces/united_kingdom_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/united_kingdom_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/united_kingdom_infantry_lod0.glb",
+      "militia": "assets/models/pieces/united_kingdom_militia_lod0.glb",
+      "engineer": "assets/models/pieces/united_kingdom_engineer_lod0.glb",
+      "tank": "assets/models/pieces/united_kingdom_tank_lod0.glb",
+      "artillery": "assets/models/pieces/united_kingdom_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/united_kingdom_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/united_kingdom_missile_lod0.glb",
+      "air_force": "assets/models/pieces/united_kingdom_air_force_lod0.glb",
+      "navy": "assets/models/pieces/united_kingdom_navy_lod0.glb"
+    },
+    "germany": {
+      "commander": "assets/models/pieces/germany_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/germany_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/germany_infantry_lod0.glb",
+      "militia": "assets/models/pieces/germany_militia_lod0.glb",
+      "engineer": "assets/models/pieces/germany_engineer_lod0.glb",
+      "tank": "assets/models/pieces/germany_tank_lod0.glb",
+      "artillery": "assets/models/pieces/germany_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/germany_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/germany_missile_lod0.glb",
+      "air_force": "assets/models/pieces/germany_air_force_lod0.glb",
+      "navy": "assets/models/pieces/germany_navy_lod0.glb"
+    },
+    "france": {
+      "commander": "assets/models/pieces/france_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/france_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/france_infantry_lod0.glb",
+      "militia": "assets/models/pieces/france_militia_lod0.glb",
+      "engineer": "assets/models/pieces/france_engineer_lod0.glb",
+      "tank": "assets/models/pieces/france_tank_lod0.glb",
+      "artillery": "assets/models/pieces/france_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/france_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/france_missile_lod0.glb",
+      "air_force": "assets/models/pieces/france_air_force_lod0.glb",
+      "navy": "assets/models/pieces/france_navy_lod0.glb"
+    },
+    "china": {
+      "commander": "assets/models/pieces/china_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/china_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/china_infantry_lod0.glb",
+      "militia": "assets/models/pieces/china_militia_lod0.glb",
+      "engineer": "assets/models/pieces/china_engineer_lod0.glb",
+      "tank": "assets/models/pieces/china_tank_lod0.glb",
+      "artillery": "assets/models/pieces/china_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/china_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/china_missile_lod0.glb",
+      "air_force": "assets/models/pieces/china_air_force_lod0.glb",
+      "navy": "assets/models/pieces/china_navy_lod0.glb"
+    },
+    "japan": {
+      "commander": "assets/models/pieces/japan_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/japan_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/japan_infantry_lod0.glb",
+      "militia": "assets/models/pieces/japan_militia_lod0.glb",
+      "engineer": "assets/models/pieces/japan_engineer_lod0.glb",
+      "tank": "assets/models/pieces/japan_tank_lod0.glb",
+      "artillery": "assets/models/pieces/japan_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/japan_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/japan_missile_lod0.glb",
+      "air_force": "assets/models/pieces/japan_air_force_lod0.glb",
+      "navy": "assets/models/pieces/japan_navy_lod0.glb"
+    },
+    "south_korea": {
+      "commander": "assets/models/pieces/south_korea_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/south_korea_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/south_korea_infantry_lod0.glb",
+      "militia": "assets/models/pieces/south_korea_militia_lod0.glb",
+      "engineer": "assets/models/pieces/south_korea_engineer_lod0.glb",
+      "tank": "assets/models/pieces/south_korea_tank_lod0.glb",
+      "artillery": "assets/models/pieces/south_korea_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/south_korea_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/south_korea_missile_lod0.glb",
+      "air_force": "assets/models/pieces/south_korea_air_force_lod0.glb",
+      "navy": "assets/models/pieces/south_korea_navy_lod0.glb"
+    },
+    "india": {
+      "commander": "assets/models/pieces/india_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/india_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/india_infantry_lod0.glb",
+      "militia": "assets/models/pieces/india_militia_lod0.glb",
+      "engineer": "assets/models/pieces/india_engineer_lod0.glb",
+      "tank": "assets/models/pieces/india_tank_lod0.glb",
+      "artillery": "assets/models/pieces/india_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/india_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/india_missile_lod0.glb",
+      "air_force": "assets/models/pieces/india_air_force_lod0.glb",
+      "navy": "assets/models/pieces/india_navy_lod0.glb"
+    },
+    "israel": {
+      "commander": "assets/models/pieces/israel_commander_lod0.glb",
+      "headquarters": "assets/models/pieces/israel_headquarters_lod0.glb",
+      "infantry": "assets/models/pieces/israel_infantry_lod0.glb",
+      "militia": "assets/models/pieces/israel_militia_lod0.glb",
+      "engineer": "assets/models/pieces/israel_engineer_lod0.glb",
+      "tank": "assets/models/pieces/israel_tank_lod0.glb",
+      "artillery": "assets/models/pieces/israel_artillery_lod0.glb",
+      "anti_aircraft": "assets/models/pieces/israel_anti_aircraft_lod0.glb",
+      "missile": "assets/models/pieces/israel_missile_lod0.glb",
+      "air_force": "assets/models/pieces/israel_air_force_lod0.glb",
+      "navy": "assets/models/pieces/israel_navy_lod0.glb"
+    }
+  }
 }

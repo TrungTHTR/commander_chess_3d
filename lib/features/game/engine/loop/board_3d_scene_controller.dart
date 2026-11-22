@@ -143,6 +143,10 @@ final class _PieceMotionState {
 
   double moveProgress = 1.0;
   bool isAnimatingMove = false;
+  double promoteTimer = 0.0;
+  double movePitchRadians = 0.0;
+  double moveRollRadians = 0.0;
+  double moveLateralSign = 1.0;
 }
 
 /// 60/120Hz 3D scene controller driving camera spring physics, piece arc
@@ -191,6 +195,7 @@ final class Board3DSceneController extends ChangeNotifier {
   double _elapsedSeconds = 0.0;
   bool _initialized = false;
   bool _disposed = false;
+  bool _usingExternalSnapshot = false;
 
   RenderBoardSnapshot get snapshot => _snapshot;
   double get elapsedSeconds => _elapsedSeconds;
@@ -239,6 +244,7 @@ final class Board3DSceneController extends ChangeNotifier {
   }) {
     if (_disposed) return;
 
+    _usingExternalSnapshot = false;
     _boardRanks = session.boardRanks;
     _boardFiles = session.boardFiles;
     _selectedCoord = selectedCoord;
@@ -254,6 +260,7 @@ final class Board3DSceneController extends ChangeNotifier {
         type: piece.type,
         side: piece.side,
         isHero: piece.isHero,
+        faction: session.factionFor(piece.side),
       );
       // Local piece forward is +Z (`docs/BLENDER_ASSET_CONTRACT.md`);
       // Red sits at +Z (rank 0 => Z=+5.5) and rotates π to face -Z toward Blue,
@@ -288,6 +295,11 @@ final class Board3DSceneController extends ChangeNotifier {
           phaseSeed: (piece.id.hashCode & 0xFF) * 0.05,
         );
       } else {
+        if (!existing.visualKey.isHero && visualKey.isHero) {
+          existing.promoteTimer = 0.85;
+        } else if (!visualKey.isHero) {
+          existing.promoteTimer = 0.0;
+        }
         existing.visualKey = visualKey;
         existing.yawRadians = targetYaw;
         existing.stackCount = stackCount;
@@ -297,6 +309,10 @@ final class Board3DSceneController extends ChangeNotifier {
           existing.currentCoord = piece.position;
           existing.startWorld.setFrom(existing.currentWorld);
           mapper.coordToWorldInto(piece.position, existing.targetWorld);
+          final dx = existing.targetWorld.x - existing.startWorld.x;
+          final dz = existing.targetWorld.z - existing.startWorld.z;
+          final localRight = dx * math.cos(targetYaw) - dz * math.sin(targetYaw);
+          existing.moveLateralSign = localRight >= 0.0 ? 1.0 : -1.0;
           existing.moveProgress = 0.0;
           existing.isAnimatingMove = true;
         }
@@ -312,6 +328,7 @@ final class Board3DSceneController extends ChangeNotifier {
   /// or pre-assembled engine scenes).
   void updateSnapshot(RenderBoardSnapshot snapshot) {
     if (_disposed) return;
+    _usingExternalSnapshot = true;
     _boardRanks = snapshot.ranks;
     _boardFiles = snapshot.files;
     _selectedCoord = snapshot.selectedCoord;
@@ -396,7 +413,8 @@ final class Board3DSceneController extends ChangeNotifier {
         motion.moveProgress =
             (motion.moveProgress + fixedDt / duration).clamp(0.0, 1.0);
         final t = _easeInOutCubic(motion.moveProgress);
-        final lift = math.sin(motion.moveProgress * math.pi) * 0.55;
+        final arcEnv = math.sin(motion.moveProgress * math.pi);
+        final lift = arcEnv * 0.55;
 
         motion.currentWorld.setValues(
           motion.startWorld.x + (motion.targetWorld.x - motion.startWorld.x) * t,
@@ -406,11 +424,44 @@ final class Board3DSceneController extends ChangeNotifier {
           motion.startWorld.z + (motion.targetWorld.z - motion.startWorld.z) * t,
         );
 
+        switch (motion.visualKey.type) {
+          case PieceType.airForce:
+            motion.movePitchRadians =
+                -0.18 * math.cos(motion.moveProgress * math.pi);
+            motion.moveRollRadians = 0.24 * arcEnv * motion.moveLateralSign;
+          case PieceType.navy:
+            motion.movePitchRadians = -0.09 * arcEnv;
+            motion.moveRollRadians =
+                0.06 * math.sin(motion.moveProgress * math.pi * 2.0) * motion.moveLateralSign;
+          case PieceType.tank:
+          case PieceType.artillery:
+          case PieceType.antiAircraft:
+          case PieceType.missile:
+          case PieceType.engineer:
+            motion.movePitchRadians =
+                -0.08 * math.cos(motion.moveProgress * math.pi);
+            motion.moveRollRadians = 0.0;
+          case PieceType.commander:
+          case PieceType.infantry:
+          case PieceType.militia:
+          case PieceType.headquarters:
+            motion.movePitchRadians = 0.12 * arcEnv;
+            motion.moveRollRadians = 0.0;
+        }
+
         if (motion.moveProgress >= 1.0) {
           motion.currentWorld.setFrom(motion.targetWorld);
           motion.isAnimatingMove = false;
+          motion.movePitchRadians = 0.0;
+          motion.moveRollRadians = 0.0;
         }
       } else {
+        if (motion.promoteTimer > 0.0) {
+          motion.promoteTimer = math.max(0.0, motion.promoteTimer - fixedDt);
+        }
+        motion.movePitchRadians = 0.0;
+        motion.moveRollRadians = 0.0;
+
         // Subtle alive float/idle elevation without mutating targetWorld.
         final isSelected =
             _selectedCoord != null && motion.currentCoord == _selectedCoord;
@@ -421,6 +472,10 @@ final class Board3DSceneController extends ChangeNotifier {
           idleY = 0.03 * math.sin(_elapsedSeconds * 2.6 + motion.phaseSeed);
         } else if (motion.visualKey.type == PieceType.navy) {
           idleY = 0.015 * math.sin(_elapsedSeconds * 2.1 + motion.phaseSeed);
+        }
+        if (motion.promoteTimer > 0.0) {
+          final p = 1.0 - (motion.promoteTimer / 0.85);
+          idleY += math.sin(p * math.pi) * 0.18;
         }
         motion.currentWorld.setValues(
           motion.targetWorld.x,
@@ -439,7 +494,9 @@ final class Board3DSceneController extends ChangeNotifier {
   }
 
   void _rebuildSnapshot() {
-    if (_pieceMotions.isEmpty && _snapshot.pieces.isNotEmpty) {
+    if (_usingExternalSnapshot &&
+        _pieceMotions.isEmpty &&
+        _snapshot.pieces.isNotEmpty) {
       _snapshot = _snapshot.copyWith(elapsedSeconds: _elapsedSeconds);
       return;
     }
@@ -449,12 +506,19 @@ final class Board3DSceneController extends ChangeNotifier {
       final isSelected =
           _selectedCoord != null && motion.currentCoord == _selectedCoord;
       final PieceAnimClip clip;
+      final double animProgress;
       if (motion.isAnimatingMove) {
         clip = PieceAnimClip.move;
+        animProgress = motion.moveProgress;
+      } else if (motion.promoteTimer > 0.0) {
+        clip = PieceAnimClip.promote;
+        animProgress = (1.0 - motion.promoteTimer / 0.85).clamp(0.0, 1.0);
       } else if (isSelected) {
         clip = PieceAnimClip.select;
+        animProgress = 0.0;
       } else {
         clip = PieceAnimClip.idle;
+        animProgress = 0.0;
       }
 
       _worldScratch.setFrom(motion.currentWorld);
@@ -468,6 +532,10 @@ final class Board3DSceneController extends ChangeNotifier {
           carriedVisualKeys: motion.carriedVisualKeys,
           isSelected: isSelected,
           animClip: clip,
+          animProgress: animProgress,
+          phaseSeed: motion.phaseSeed,
+          movePitchRadians: motion.movePitchRadians,
+          moveRollRadians: motion.moveRollRadians,
         ),
       );
     }

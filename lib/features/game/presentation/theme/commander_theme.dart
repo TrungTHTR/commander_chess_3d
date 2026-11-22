@@ -1,17 +1,37 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Manages the active [ThemeMode] for [CommanderChessApp].
+import '../../state/game_providers.dart';
+
+/// Manages the active [ThemeMode] for [CommanderChessApp], synchronized
+/// bidirectionally with [gameSettingsProvider] (`isDarkMode`) without cycles.
 final class CommanderThemeModeNotifier extends Notifier<ThemeMode> {
   @override
-  ThemeMode build() => ThemeMode.dark;
+  ThemeMode build() {
+    final isDarkMode = ref.watch(
+      gameSettingsProvider.select((settings) => settings.isDarkMode),
+    );
+    return isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  }
 
   void toggle() {
-    state = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    final nextMode =
+        state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    setMode(nextMode);
   }
 
   void setMode(ThemeMode mode) {
+    if (state == mode) return;
     state = mode;
+    if (mode != ThemeMode.system) {
+      unawaited(
+        ref.read(gameSettingsProvider.notifier).setDarkMode(
+              mode == ThemeMode.dark,
+            ),
+      );
+    }
   }
 }
 

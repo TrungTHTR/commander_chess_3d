@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import 'action_model.dart';
 import 'board_coord.dart';
+import 'faction_model.dart';
 import 'piece_model.dart';
 
 enum GameMode {
@@ -144,6 +145,8 @@ final class GameSessionState extends Equatable {
     this.moveHistory = const <GameMove>[],
     this.turnNumber = 1,
     this.variantConfig = const RuleVariantConfig(),
+    this.redFaction = FactionId.vietnam,
+    this.blueFaction = FactionId.usa,
   });
 
   final String matchId;
@@ -158,6 +161,12 @@ final class GameSessionState extends Equatable {
   final List<GameMove> moveHistory;
   final int turnNumber;
   final RuleVariantConfig variantConfig;
+  final FactionId redFaction;
+  final FactionId blueFaction;
+
+  /// Returns the selected national faction for [side].
+  FactionId factionFor(PlayerSide side) =>
+      side == PlayerSide.red ? redFaction : blueFaction;
 
   /// Returns the alive top-level piece occupying [coord], or `null` if empty.
   PieceEntity? pieceAt(BoardCoord coord) {
@@ -200,6 +209,8 @@ final class GameSessionState extends Equatable {
     List<GameMove>? moveHistory,
     int? turnNumber,
     RuleVariantConfig? variantConfig,
+    FactionId? redFaction,
+    FactionId? blueFaction,
   }) {
     return GameSessionState(
       matchId: matchId ?? this.matchId,
@@ -220,6 +231,8 @@ final class GameSessionState extends Equatable {
           : this.moveHistory,
       turnNumber: turnNumber ?? this.turnNumber,
       variantConfig: variantConfig ?? this.variantConfig,
+      redFaction: redFaction ?? this.redFaction,
+      blueFaction: blueFaction ?? this.blueFaction,
     );
   }
 
@@ -282,6 +295,14 @@ final class GameSessionState extends Equatable {
       variantConfig: configMap == null
           ? const RuleVariantConfig()
           : RuleVariantConfig.fromJson(configMap),
+      redFaction: FactionId.fromJsonValue(
+        json['redFaction'] ?? json['red_faction'],
+        fallback: FactionId.vietnam,
+      ),
+      blueFaction: FactionId.fromJsonValue(
+        json['blueFaction'] ?? json['blue_faction'],
+        fallback: FactionId.usa,
+      ),
     );
   }
 
@@ -299,6 +320,8 @@ final class GameSessionState extends Equatable {
             moveHistory.map((e) => e.toJson()).toList(growable: false),
         'turnNumber': turnNumber,
         'variantConfig': variantConfig.toJson(),
+        'redFaction': redFaction.name,
+        'blueFaction': blueFaction.name,
       };
 
   static String _asString(Object? raw, [String fallback = '']) =>
@@ -330,5 +353,7 @@ final class GameSessionState extends Equatable {
         moveHistory,
         turnNumber,
         variantConfig,
+        redFaction,
+        blueFaction,
       ];
 }
