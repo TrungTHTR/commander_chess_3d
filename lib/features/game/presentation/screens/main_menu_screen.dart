@@ -59,9 +59,7 @@ final class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     unawaited(ref.read(gameSessionNotifierProvider.notifier).startNewMatch());
     unawaited(
       Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const CommanderGameScreen(),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const CommanderGameScreen()),
       ),
     );
   }
@@ -69,22 +67,17 @@ final class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   void _openSettings() {
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     unawaited(
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const SettingsScreen(),
-        ),
-      ),
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
     );
   }
 
   void _openHelp() {
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     unawaited(
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const HelpScreen(),
-        ),
-      ),
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const HelpScreen())),
     );
   }
 
@@ -210,200 +203,264 @@ final class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     final redDef = FactionCatalog.of(settings.redFaction);
     final blueDef = FactionCatalog.of(settings.blueFaction);
 
-    return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isCompact = constraints.maxWidth < 400;
-            return Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 12 : 24,
-                  vertical: isCompact ? 12 : 20,
+    final menuTheme = CommanderTheme.menu(theme);
+    final colors = menuTheme.colorScheme;
+
+    return Theme(
+      data: menuTheme,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0D1711),
+        body: LayoutBuilder(
+          builder: (context, viewport) {
+            final wide = viewport.maxWidth >= 760;
+            final inset = wide
+                ? (viewport.maxWidth * 0.07).clamp(42.0, 128.0)
+                : 20.0;
+            final secondaryStyle = OutlinedButton.styleFrom(
+              foregroundColor: colors.onSurface,
+              backgroundColor: colors.surface.withValues(alpha: 0.74),
+              side: BorderSide(color: colors.outlineVariant),
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+            );
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: wide ? viewport.maxHeight : 330,
+                  child: Image.asset(
+                    'assets/images/commander_table.webp',
+                    fit: BoxFit.cover,
+                    alignment: wide
+                        ? Alignment.centerRight
+                        : const Alignment(0.55, 0),
+                    excludeFromSemantics: true,
+                  ),
                 ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '11×12 BOARD • 19 UNITS / SIDE',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.6,
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Color(0xD907100C),
+                        Color(0x5907100C),
+                        Color(0x0007100C),
+                      ],
+                      stops: [0, 0.42, 0.84],
+                    ),
+                  ),
+                ),
+                if (!wide)
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 330,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0x6007100C),
+                            Color(0xFF0D1711),
+                          ],
+                          stops: [0.12, 1],
+                        ),
+                      ),
+                    ),
+                  ),
+                SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, safeViewport) => SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(inset, 16, inset, 36),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (safeViewport.maxHeight - 52).clamp(
+                            0.0,
+                            double.infinity,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: wide
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: IconButton.filledTonal(
+                                key: MainMenuScreen.themeToggleButtonKey,
+                                tooltip: isDark
+                                    ? 'Switch to light theme'
+                                    : 'Switch to dark theme',
+                                onPressed: () => ref
+                                    .read(commanderThemeModeProvider.notifier)
+                                    .toggle(),
+                                icon: Icon(
+                                  isDark ? Icons.light_mode : Icons.dark_mode,
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            key: MainMenuScreen.themeToggleButtonKey,
-                            tooltip: isDark
-                                ? 'Switch to light theme'
-                                : 'Switch to dark theme',
-                            onPressed: () => ref
-                                .read(commanderThemeModeProvider.notifier)
-                                .toggle(),
-                            icon: Icon(
-                              isDark ? Icons.light_mode : Icons.dark_mode,
+                            SizedBox(height: wide ? 10 : 66),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 455),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    'Cờ Tư Lệnh',
+                                    style: menuTheme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFFF0CC8D),
+                                          letterSpacing: 2.8,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Commander\nChess 3D',
+                                    semanticsLabel: 'Commander Chess 3D',
+                                    style: TextStyle(
+                                      fontFamily: 'Georgia',
+                                      fontFamilyFallback: const ['serif'],
+                                      color: const Color(0xFFF9F2E3),
+                                      fontSize: wide ? 56 : 38,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.03,
+                                      letterSpacing: wide ? -2.5 : -1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Card(
+                                    color: isDark
+                                        ? const Color(0xEE16231B)
+                                        : colors.surface,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(
+                                        color: colors.outlineVariant,
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Wrap(
+                                            spacing: 12,
+                                            runSpacing: 6,
+                                            crossAxisAlignment:
+                                                WrapCrossAlignment.center,
+                                            children: [
+                                              Text(
+                                                'Active Matchup',
+                                                style: menuTheme
+                                                    .textTheme
+                                                    .titleSmall,
+                                              ),
+                                              if (settings.isMirrorMatch)
+                                                Text(
+                                                  'Mirror Match',
+                                                  key: MainMenuScreen
+                                                      .mirrorMatchBadgeKey,
+                                                  style: TextStyle(
+                                                    color: colors.primary,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          _MenuFactionRow(
+                                            sideLabel: 'Red (Side 1)',
+                                            sideColor: const Color(0xFFF08077),
+                                            faction: redDef,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          _MenuFactionRow(
+                                            sideLabel: 'Blue (Side 2)',
+                                            sideColor: const Color(0xFF82B8E4),
+                                            faction: blueDef,
+                                          ),
+                                          const Divider(height: 24),
+                                          Text(
+                                            'Camera: ${_cameraPresetLabel(settings.defaultCameraPreset)}',
+                                            style: menuTheme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color:
+                                                      colors.onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  FilledButton.icon(
+                                    key: MainMenuScreen.startButtonKey,
+                                    onPressed: _startMatch,
+                                    style: FilledButton.styleFrom(
+                                      minimumSize: const Size(0, 56),
+                                      textStyle: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.play_arrow_rounded),
+                                    label: const Text('Start'),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        key: MainMenuScreen.settingsButtonKey,
+                                        style: secondaryStyle,
+                                        onPressed: _openSettings,
+                                        icon: const Icon(Icons.tune_rounded),
+                                        label: const Text('Settings'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        key: MainMenuScreen.helpButtonKey,
+                                        style: secondaryStyle,
+                                        onPressed: _openHelp,
+                                        icon: const Icon(
+                                          Icons.help_outline_rounded,
+                                        ),
+                                        label: const Text('Help'),
+                                      ),
+                                      TextButton(
+                                        key: MainMenuScreen.exitButtonKey,
+                                        onPressed: () =>
+                                            unawaited(_confirmExit()),
+                                        style: TextButton.styleFrom(
+                                          minimumSize: const Size(0, 48),
+                                          foregroundColor: const Color(
+                                            0xFFF9F2E3,
+                                          ),
+                                        ),
+                                        child: const Text('Exit'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Commander Chess 3D',
-                        style: (isCompact
-                                ? theme.textTheme.headlineSmall
-                                : theme.textTheme.headlineMedium)
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Cờ Tư Lệnh • 11 National Military Factions',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(isCompact ? 12 : 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: Text(
-                                      'Active Matchup',
-                                      style: theme.textTheme.titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                  if (settings.isMirrorMatch)
-                                    Container(
-                                      key: MainMenuScreen.mirrorMatchBadgeKey,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.tertiaryContainer,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        'Mirror Match',
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                              color: colorScheme
-                                                  .onTertiaryContainer,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              _MenuFactionRow(
-                                sideLabel: 'Red (Side 1)',
-                                sideColor: CommanderTheme.redFaction,
-                                faction: redDef,
-                              ),
-                              const SizedBox(height: 8),
-                              _MenuFactionRow(
-                                sideLabel: 'Blue (Side 2)',
-                                sideColor: CommanderTheme.blueFaction,
-                                faction: blueDef,
-                              ),
-                              const Divider(height: 20),
-                              Row(
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.videocam_outlined,
-                                    size: 16,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Camera: ${_cameraPresetLabel(settings.defaultCameraPreset)}',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        key: MainMenuScreen.startButtonKey,
-                        onPressed: _startMatch,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: const Text('Start'),
-                      ),
-                      const SizedBox(height: 10),
-                      FilledButton.tonalIcon(
-                        key: MainMenuScreen.settingsButtonKey,
-                        onPressed: _openSettings,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.tune_rounded),
-                        label: const Text('Settings'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        key: MainMenuScreen.helpButtonKey,
-                        onPressed: _openHelp,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.help_outline_rounded),
-                        label: const Text('Help'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        key: MainMenuScreen.exitButtonKey,
-                        onPressed: () => unawaited(_confirmExit()),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.exit_to_app_rounded),
-                        label: const Text('Exit'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             );
           },
         ),
@@ -425,78 +482,17 @@ final class _MenuFactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Row(
-      children: <Widget>[
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: sideColor,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 8),
+      children: [
+        Icon(Icons.circle, color: sideColor, size: 9),
+        const SizedBox(width: 10),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                '$sideLabel: ${faction.id.displayName} (${faction.id.shortCode})',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                faction.id.doctrineSummary,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+          child: Text(
+            '$sideLabel: ${faction.id.displayName} (${faction.id.shortCode})',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-        ),
-        const SizedBox(width: 8),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            _PaletteSwatchDot(color: Color(faction.palette.primaryHex)),
-            const SizedBox(width: 3),
-            _PaletteSwatchDot(color: Color(faction.palette.accentHex)),
-            const SizedBox(width: 3),
-            _PaletteSwatchDot(color: Color(faction.palette.emblemHex)),
-          ],
         ),
       ],
-    );
-  }
-}
-
-final class _PaletteSwatchDot extends StatelessWidget {
-  const _PaletteSwatchDot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          width: 0.8,
-        ),
-      ),
     );
   }
 }

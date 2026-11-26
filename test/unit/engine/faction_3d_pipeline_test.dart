@@ -771,8 +771,40 @@ void main() {
           expect(red.mesh.faceSlots, contains(teamSlot));
           expect(red.colorForSlot(teamSlot), ProceduralPieceAssetProvider.redTeamRingColor);
           expect(blue.colorForSlot(teamSlot), ProceduralPieceAssetProvider.blueTeamRingColor);
+          final overview = red.overview!;
+          expect(overview.mesh, same(blue.overview!.mesh));
+          expect(overview.mesh.triangleCount, lessThanOrEqualTo(450));
+          expect(overview.mesh.triangleCount, lessThan(red.mesh.triangleCount));
+          expect(overview.mesh.passengerSockets, hasLength(type.carrierCapacity));
+          expect(overview.mesh.faceSlots, contains(teamSlot));
         }
       }
+
+      final renderer = Placeholder3DBoardRenderer(assetProvider: realProvider);
+      addTearDown(renderer.dispose);
+      final camera = SpringOrbitCamera3D();
+      final scene = RenderBoardSnapshot(pieces: [
+        RenderPieceNode(
+          pieceId: 'idle-tank',
+          visualKey: const PieceVisualKey(type: PieceType.tank, side: PlayerSide.red),
+          worldPosition: const BoardCoordinateMapper().coordToWorld(
+            BoardCoord.fromAlgebraic('f6'),
+          ),
+          yawRadians: math.pi,
+        ),
+      ]);
+      int drawScene(RenderBoardSnapshot snapshot) {
+        final recorder = ui.PictureRecorder();
+        renderer.render(ui.Canvas(recorder), const ui.Size(1280, 720), snapshot, camera);
+        recorder.endRecording().dispose();
+        return renderer.debugLastDrawVerticesCallCount;
+      }
+
+      expect(drawScene(scene), greaterThan(0));
+      expect(drawScene(scene), greaterThan(0));
+      expect(drawScene(scene.copyWith(elapsedSeconds: 1)), 0);
+      camera.snapToPreset(yaw: 0.3, pitch: 0.86, distance: 16.2);
+      expect(drawScene(scene), greaterThan(0));
 
       realProvider.dispose();
       expect(realProvider.cachedMeshCount, equals(0));

@@ -98,7 +98,7 @@ final class FixedTimestepDriver {
 
     _accumulator += clampedDt;
     var steps = 0;
-    while (_accumulator >= fixedStepSeconds && steps < 4) {
+    while (_accumulator >= fixedStepSeconds && steps < 6) {
       onFixedStep(fixedStepSeconds);
       _accumulator -= fixedStepSeconds;
       steps++;
@@ -165,6 +165,7 @@ final class Board3DSceneController extends ChangeNotifier {
     _snapshot = RenderBoardSnapshot(tiles: _defaultTiles);
     _driver = FixedTimestepDriver(
       vsync: vsync,
+      fixedStepSeconds: 1.0 / 120.0,
       onFixedStep: _handleFixedStep,
       onRenderFrame: _handleRenderFrame,
     );
@@ -338,6 +339,11 @@ final class Board3DSceneController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Requests a repaint when an asset becomes available.
+  void requestRepaint() {
+    if (!_disposed) notifyListeners();
+  }
+
   void setCameraTarget(CameraViewTarget target, {bool animate = true}) {
     setCameraPreset(
       yaw: target.yaw,
@@ -484,12 +490,11 @@ final class Board3DSceneController extends ChangeNotifier {
         );
       }
     }
-
-    _rebuildSnapshot();
   }
 
   void _handleRenderFrame(double interpolationAlpha) {
-    if (_disposed) return;
+    if (_disposed || _snapshot.elapsedSeconds == _elapsedSeconds) return;
+    _rebuildSnapshot();
     notifyListeners();
   }
 

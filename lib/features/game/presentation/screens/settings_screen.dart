@@ -51,261 +51,266 @@ final class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(gameSettingsProvider);
     final notifier = ref.read(gameSettingsProvider.notifier);
-    final theme = Theme.of(context);
+    final theme = CommanderTheme.settings(Theme.of(context));
     final colorScheme = theme.colorScheme;
     final redDef = FactionCatalog.of(settings.redFaction);
     final blueDef = FactionCatalog.of(settings.blueFaction);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          key: backButtonKey,
-          tooltip: 'Back',
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+    return Theme(
+      data: theme,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            key: backButtonKey,
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text('Settings'),
         ),
-        title: const Text('Settings'),
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 720;
-            final horizPad = isWide ? 24.0 : 12.0;
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 800;
+              final horizPad = isWide ? 24.0 : 12.0;
 
-            return ListView(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizPad,
-                vertical: 12,
-              ),
-              children: <Widget>[
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 880),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                const _SectionHeader(
-                                  title: 'Opposing Forces',
-                                  subtitle:
-                                      'Choose national 3D unit rosters for Side 1 (Red) and Side 2 (Blue). Mirror matches are supported.',
-                                ),
-                                const SizedBox(height: 12),
-                                _FactionPickerSection(
-                                  title: 'Red Force (Side 1 • Moves First)',
-                                  sideColor: CommanderTheme.redFaction,
-                                  selectedFaction: settings.redFaction,
-                                  chipKeyBuilder: redFactionChipKey,
-                                  onSelect: (faction) => unawaited(
-                                    notifier.selectRedFaction(faction),
+              return ListView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizPad,
+                  vertical: 12,
+                ),
+                children: <Widget>[
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1060),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  const _SectionHeader(
+                                    title: 'Opposing Forces',
+                                    subtitle: 'Choose a national roster for each side.',
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: OutlinedButton.icon(
-                                    key: swapFactionsButtonKey,
-                                    onPressed: () =>
-                                        unawaited(notifier.swapFactions()),
-                                    icon: const Icon(Icons.swap_vert_rounded),
-                                    label: const Text('Swap Sides'),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                _FactionPickerSection(
-                                  title: 'Blue Force (Side 2)',
-                                  sideColor: CommanderTheme.blueFaction,
-                                  selectedFaction: settings.blueFaction,
-                                  chipKeyBuilder: blueFactionChipKey,
-                                  onSelect: (faction) => unawaited(
-                                    notifier.selectBlueFaction(faction),
-                                  ),
-                                ),
-                                if (settings.isMirrorMatch) ...<Widget>[
                                   const SizedBox(height: 12),
-                                  Container(
-                                    key: mirrorMatchBadgeKey,
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.tertiaryContainer,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: colorScheme.tertiary,
+                                  _FactionPickers(
+                                    sideBySide: isWide,
+                                    red: _FactionPickerSection(
+                                      title: 'Red Force (Side 1 • Moves First)',
+                                      sideColor: CommanderTheme.redFaction,
+                                      selectedFaction: settings.redFaction,
+                                      chipKeyBuilder: redFactionChipKey,
+                                      onSelect: (faction) => unawaited(
+                                        notifier.selectRedFaction(faction),
                                       ),
                                     ),
-                                    child: Row(
-                                      children: <Widget>[
-                                        Icon(
-                                          Icons.compare_arrows_rounded,
-                                          size: 18,
-                                          color: colorScheme.onTertiaryContainer,
+                                    blue: _FactionPickerSection(
+                                      title: 'Blue Force (Side 2)',
+                                      sideColor: CommanderTheme.blueFaction,
+                                      selectedFaction: settings.blueFaction,
+                                      chipKeyBuilder: blueFactionChipKey,
+                                      onSelect: (faction) => unawaited(
+                                        notifier.selectBlueFaction(faction),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: OutlinedButton.icon(
+                                      key: swapFactionsButtonKey,
+                                      onPressed: () =>
+                                          unawaited(notifier.swapFactions()),
+                                      icon: const Icon(
+                                        Icons.swap_horiz_rounded,
+                                      ),
+                                      label: const Text('Swap Sides'),
+                                    ),
+                                  ),
+                                  if (settings.isMirrorMatch) ...<Widget>[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      key: mirrorMatchBadgeKey,
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.tertiaryContainer,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: colorScheme.tertiary,
                                         ),
-                                        const SizedBox(width: 8),
+                                      ),
+                                      child: Row(
+                                        children: <Widget>[
+                                          Icon(
+                                            Icons.compare_arrows_rounded,
+                                            size: 18,
+                                            color:
+                                                colorScheme.onTertiaryContainer,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Mirror Match Active — Identical national forces are distinguished by Red vs Blue pedestal rings.',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: colorScheme
+                                                        .onTertiaryContainer,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  const _SectionHeader(
+                                    title: 'Appearance & 3D Camera',
+                                  ),
+                                  const SizedBox(height: 6),
+                                  SwitchListTile(
+                                    key: darkModeSwitchKey,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Dark Theme'),
+                                    subtitle: Text(
+                                      settings.isDarkMode
+                                          ? 'Night tactical palette active'
+                                          : 'Daylight tactical palette active',
+                                    ),
+                                    value: settings.isDarkMode,
+                                    onChanged: (value) =>
+                                        unawaited(notifier.setDarkMode(value)),
+                                  ),
+                                  const Divider(height: 16),
+                                  Text(
+                                    'Default Camera Preset',
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: <Widget>[
+                                      for (final presetKey
+                                          in kSupportedCameraPresetKeys)
+                                        ChoiceChip(
+                                          key: cameraPresetChipKey(presetKey),
+                                          label: Text(
+                                            _cameraPresetLabel(presetKey),
+                                          ),
+                                          selected:
+                                              settings.defaultCameraPreset ==
+                                              presetKey,
+                                          onSelected: (_) => unawaited(
+                                            notifier.setDefaultCameraPreset(
+                                              presetKey,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  const _SectionHeader(
+                                    title: 'Unit Hardware Preview',
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (isWide)
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
                                         Expanded(
-                                          child: Text(
-                                            'Mirror Match Active — Identical national forces are distinguished by Red vs Blue pedestal rings.',
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  color: colorScheme
-                                                      .onTertiaryContainer,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
+                                          child: _FactionHardwarePreview(
+                                            sideLabel: 'Red Force',
+                                            sideColor:
+                                                CommanderTheme.redFaction,
+                                            faction: redDef,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: _FactionHardwarePreview(
+                                            sideLabel: 'Blue Force',
+                                            sideColor:
+                                                CommanderTheme.blueFaction,
+                                            faction: blueDef,
                                           ),
                                         ),
                                       ],
+                                    )
+                                  else ...<Widget>[
+                                    _FactionHardwarePreview(
+                                      sideLabel: 'Red Force',
+                                      sideColor: CommanderTheme.redFaction,
+                                      faction: redDef,
                                     ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                const _SectionHeader(
-                                  title: 'Appearance & 3D Camera',
-                                  subtitle:
-                                      'Theme mode synchronizes across the menu, help, and in-game HUD.',
-                                ),
-                                const SizedBox(height: 6),
-                                SwitchListTile(
-                                  key: darkModeSwitchKey,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Dark Theme'),
-                                  subtitle: Text(
-                                    settings.isDarkMode
-                                        ? 'Night tactical palette active'
-                                        : 'Daylight tactical palette active',
-                                  ),
-                                  value: settings.isDarkMode,
-                                  onChanged: (value) =>
-                                      unawaited(notifier.setDarkMode(value)),
-                                ),
-                                const Divider(height: 16),
-                                Text(
-                                  'Default Camera Preset',
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: <Widget>[
-                                    for (final presetKey
-                                        in kSupportedCameraPresetKeys)
-                                      ChoiceChip(
-                                        key: cameraPresetChipKey(presetKey),
-                                        label: Text(
-                                          _cameraPresetLabel(presetKey),
-                                        ),
-                                        selected:
-                                            settings.defaultCameraPreset ==
-                                            presetKey,
-                                        onSelected: (_) => unawaited(
-                                          notifier.setDefaultCameraPreset(
-                                            presetKey,
-                                          ),
-                                        ),
-                                      ),
+                                    const Divider(height: 24),
+                                    _FactionHardwarePreview(
+                                      sideLabel: 'Blue Force',
+                                      sideColor: CommanderTheme.blueFaction,
+                                      faction: blueDef,
+                                    ),
                                   ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                const _SectionHeader(
-                                  title: 'Unit Hardware Preview',
-                                  subtitle:
-                                      '19 units per side across 11 unit classes for the currently selected opposing nations.',
-                                ),
-                                const SizedBox(height: 12),
-                                if (isWide)
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: _FactionHardwarePreview(
-                                          sideLabel: 'Red Force',
-                                          sideColor: CommanderTheme.redFaction,
-                                          faction: redDef,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: _FactionHardwarePreview(
-                                          sideLabel: 'Blue Force',
-                                          sideColor: CommanderTheme.blueFaction,
-                                          faction: blueDef,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else ...<Widget>[
-                                  _FactionHardwarePreview(
-                                    sideLabel: 'Red Force',
-                                    sideColor: CommanderTheme.redFaction,
-                                    faction: redDef,
-                                  ),
-                                  const Divider(height: 24),
-                                  _FactionHardwarePreview(
-                                    sideLabel: 'Blue Force',
-                                    sideColor: CommanderTheme.blueFaction,
-                                    faction: blueDef,
-                                  ),
                                 ],
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          alignment: WrapAlignment.spaceBetween,
-                          children: <Widget>[
-                            OutlinedButton.icon(
-                              key: resetDefaultsButtonKey,
-                              onPressed: () =>
-                                  unawaited(notifier.resetDefaults()),
-                              icon: const Icon(Icons.restart_alt_rounded),
-                              label: const Text('Reset Defaults'),
-                            ),
-                            FilledButton.icon(
-                              key: doneButtonKey,
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.check_rounded),
-                              label: const Text('Done'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            alignment: WrapAlignment.spaceBetween,
+                            children: <Widget>[
+                              OutlinedButton.icon(
+                                key: resetDefaultsButtonKey,
+                                onPressed: () =>
+                                    unawaited(notifier.resetDefaults()),
+                                icon: const Icon(Icons.restart_alt_rounded),
+                                label: const Text('Reset Defaults'),
+                              ),
+                              FilledButton.icon(
+                                key: doneButtonKey,
+                                onPressed: () => Navigator.of(context).pop(),
+                                icon: const Icon(Icons.check_rounded),
+                                label: const Text('Done'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -313,10 +318,10 @@ final class SettingsScreen extends ConsumerWidget {
 }
 
 final class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.subtitle});
+  const _SectionHeader({required this.title, this.subtitle});
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -331,13 +336,45 @@ final class _SectionHeader extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        if (subtitle case final String description) ...[
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
+        ],
+      ],
+    );
+  }
+}
+
+final class _FactionPickers extends StatelessWidget {
+  const _FactionPickers({
+    required this.sideBySide,
+    required this.red,
+    required this.blue,
+  });
+
+  final bool sideBySide;
+  final Widget red;
+  final Widget blue;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!sideBySide) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [red, const SizedBox(height: 12), blue],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: red),
+        const SizedBox(width: 12),
+        Expanded(child: blue),
       ],
     );
   }
@@ -363,58 +400,71 @@ final class _FactionPickerSection extends StatelessWidget {
     final theme = Theme.of(context);
     final selectedDef = FactionCatalog.of(selectedFaction);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: sideColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '$title: ${selectedDef.id.displayName}',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          sideColor.withValues(alpha: 0.09),
+          theme.colorScheme.surface,
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: sideColor.withValues(alpha: 0.38)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            for (final def in FactionCatalog.all)
-              ChoiceChip(
-                key: chipKeyBuilder(def.id),
-                avatar: Container(
-                  width: 12,
-                  height: 12,
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(
-                    color: Color(def.palette.primaryHex),
+                    color: sideColor,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Color(def.palette.accentHex),
-                      width: 1.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$title: ${selectedDef.id.displayName}',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                label: Text('${def.id.displayName} (${def.id.shortCode})'),
-                selected: selectedFaction == def.id,
-                onSelected: (_) => onSelect(def.id),
-              ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: <Widget>[
+                for (final def in FactionCatalog.all)
+                  ChoiceChip(
+                    key: chipKeyBuilder(def.id),
+                    avatar: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Color(def.palette.primaryHex),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Color(def.palette.accentHex),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    label: Text('${def.id.displayName} (${def.id.shortCode})'),
+                    selected: selectedFaction == def.id,
+                    onSelected: (_) => onSelect(def.id),
+                  ),
+              ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -482,10 +532,7 @@ final class _FactionHardwarePreview extends StatelessWidget {
 }
 
 final class _UnitHardwareTile extends StatelessWidget {
-  const _UnitHardwareTile({
-    required this.profile,
-    required this.palette,
-  });
+  const _UnitHardwareTile({required this.profile, required this.palette});
 
   final FactionUnitProfile profile;
   final FactionColorPalette palette;

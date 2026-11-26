@@ -17,8 +17,7 @@ final class CommanderThemeModeNotifier extends Notifier<ThemeMode> {
   }
 
   void toggle() {
-    final nextMode =
-        state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    final nextMode = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     setMode(nextMode);
   }
 
@@ -27,9 +26,9 @@ final class CommanderThemeModeNotifier extends Notifier<ThemeMode> {
     state = mode;
     if (mode != ThemeMode.system) {
       unawaited(
-        ref.read(gameSettingsProvider.notifier).setDarkMode(
-              mode == ThemeMode.dark,
-            ),
+        ref
+            .read(gameSettingsProvider.notifier)
+            .setDarkMode(mode == ThemeMode.dark),
       );
     }
   }
@@ -53,6 +52,51 @@ abstract final class CommanderTheme {
   static const Color darkCard = Color(0xFF16222E);
   static const Color lightSurface = Color(0xFFF3F5F8);
   static const Color lightCard = Color(0xFFFFFFFF);
+
+  static final ColorScheme _menuColors =
+      ColorScheme.fromSeed(
+        seedColor: const Color(0xFF8C9B70),
+        brightness: Brightness.dark,
+      ).copyWith(
+        surface: const Color(0xFF0D1711),
+        onSurface: const Color(0xFFF9F2E3),
+        onSurfaceVariant: const Color(0xFFC5CDBE),
+        outlineVariant: const Color(0xFF556352),
+        primary: const Color(0xFFE8C68B),
+        onPrimary: const Color(0xFF281B08),
+      );
+
+  static final ColorScheme _lightSettingsColors = ColorScheme.fromSeed(
+    seedColor: const Color(0xFF53653E),
+  ).copyWith(surface: const Color(0xFFF4F1E8));
+
+  static ThemeData menu(ThemeData base) => base.copyWith(
+    colorScheme: base.brightness == Brightness.dark
+        ? _menuColors
+        : _lightSettingsColors,
+  );
+
+  static ThemeData settings(ThemeData base) {
+    final colors = base.brightness == Brightness.dark
+        ? _menuColors
+        : _lightSettingsColors;
+    return base.copyWith(
+      colorScheme: colors,
+      scaffoldBackgroundColor: colors.surface,
+      cardTheme: base.cardTheme.copyWith(
+        color: colors.surfaceContainerLow,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: colors.outlineVariant),
+        ),
+      ),
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: colors.surface,
+        foregroundColor: colors.onSurface,
+      ),
+    );
+  }
 
   static ThemeData light() {
     final baseScheme = ColorScheme.fromSeed(

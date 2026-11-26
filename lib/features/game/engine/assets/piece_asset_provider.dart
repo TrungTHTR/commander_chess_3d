@@ -35,6 +35,7 @@ final class ProceduralPieceVisualHandle implements PieceVisualHandle {
     required this.mesh,
     required this.slotColors,
     this.isGlbBacked = false,
+    this.overview,
   });
 
   @override
@@ -47,6 +48,7 @@ final class ProceduralPieceVisualHandle implements PieceVisualHandle {
   final bool isGlbBacked;
 
   final ProceduralMeshPrimitive mesh;
+  final ProceduralPieceVisualHandle? overview;
 
   /// Color table indexed by [ProceduralMaterialSlot.index].
   final List<Color> slotColors;
@@ -61,10 +63,7 @@ final class ProceduralPieceVisualHandle implements PieceVisualHandle {
 
 /// Resolves bundled GLB meshes and provides procedural geometry while loading.
 final class ProceduralPieceAssetProvider implements PieceAssetProvider {
-  ProceduralPieceAssetProvider({
-    this._bundle,
-    this._preloadGlbs = true,
-  });
+  ProceduralPieceAssetProvider({this._bundle, this._preloadGlbs = true});
 
   static const Color redTeamRingColor = Color(0xFFD32F2F);
   static const Color blueTeamRingColor = Color(0xFF1976D2);
@@ -79,6 +78,7 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
   final Map<PieceVisualKey, ProceduralPieceVisualHandle> _handleCache =
       <PieceVisualKey, ProceduralPieceVisualHandle>{};
   final Map<String, GlbParsedAsset> _glbCache = <String, GlbParsedAsset>{};
+  final Map<GlbParsedAsset, GlbParsedAsset> _overviewCache = {};
 
   AssetManifest? _manifest;
   bool _disposed = false;
@@ -109,10 +109,10 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
     // Pre-warm all 11 × 11 national procedural mesh geometries synchronously.
     for (final faction in FactionId.values) {
       for (final type in PieceType.values) {
-        _meshCache.putIfAbsent(
-          (faction, type),
-          () => FactionUnitMeshBuilder.build(faction, type),
-        );
+        _meshCache.putIfAbsent((
+          faction,
+          type,
+        ), () => FactionUnitMeshBuilder.build(faction, type));
       }
     }
 
@@ -140,14 +140,36 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
           byteData,
           includeRenderMesh: true,
         );
+        final overview = await _loadOverview(activeBundle, path);
         if (_disposed || epoch != _preloadEpoch) return;
         _glbCache[path] = parsed;
+        if (overview != null) _overviewCache[parsed] = overview;
       } on Object {
         // Safely tolerate missing/unbundled `.glb` entries in mock test bundles;
         // synchronous procedural meshes guarantee Frame-1 rendering regardless.
       }
     }
     if (!_disposed && epoch == _preloadEpoch) _handleCache.clear();
+  }
+
+  static Future<GlbParsedAsset?> _loadOverview(
+    AssetBundle bundle,
+    String path,
+  ) async {
+    const fullSuffix = '_lod0.glb';
+    if (!path.endsWith(fullSuffix)) return null;
+    final overviewPath = path.replaceRange(
+      path.length - fullSuffix.length,
+      path.length,
+      '_lod1.glb',
+    );
+    try {
+      final data = await bundle.load(overviewPath);
+      return GlbBinaryReader.parseByteData(data, includeRenderMesh: true);
+    } on Object {
+      // External manifests can supply only the full-detail mesh.
+      return null;
+    }
   }
 
   @override
@@ -165,6 +187,7 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
     _handleCache.clear();
     _meshCache.clear();
     _glbCache.clear();
+    _overviewCache.clear();
     _manifest = null;
   }
 
@@ -177,27 +200,43 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
     final effectiveFaction = _resolveEffectiveFaction(key);
     final imported = preloadedGlbFor(key);
     final importedMesh = imported?.renderMesh;
-    final mesh = importedMesh ??
-        _meshCache.putIfAbsent(
-          (effectiveFaction, key.type),
-          () => FactionUnitMeshBuilder.build(effectiveFaction, key.type),
-        );
+    final mesh =
+        importedMesh ??
+        _meshCache.putIfAbsent((
+          effectiveFaction,
+          key.type,
+        ), () => FactionUnitMeshBuilder.build(effectiveFaction, key.type));
     final descriptor = _manifest?.findPiece(key);
     final slotColors = _resolveSlotColors(key, effectiveFaction, descriptor);
+    final overview = _overviewCache[imported];
     return ProceduralPieceVisualHandle(
       visualKey: key,
       boundingRadius: descriptor?.boundingRadius ?? 0.425,
       mesh: mesh,
-      slotColors: importedMesh == null
+      slotColors: imported == null
           ? slotColors
-          : [
-              ...slotColors,
-              for (final material in imported!.jsonRoot['materials'] as List)
-                _glbBaseColor(material as Map),
-            ],
+          : _importedColors(imported, slotColors),
       isGlbBacked: importedMesh != null,
+      overview: overview == null
+          ? null
+          : ProceduralPieceVisualHandle(
+              visualKey: key,
+              boundingRadius: descriptor?.boundingRadius ?? 0.425,
+              mesh: overview.renderMesh!,
+              slotColors: _importedColors(overview, slotColors),
+              isGlbBacked: true,
+            ),
     );
   }
+
+  static List<Color> _importedColors(
+    GlbParsedAsset imported,
+    List<Color> defaults,
+  ) => [
+    ...defaults,
+    for (final material in imported.jsonRoot['materials'] as List)
+      _glbBaseColor(material as Map),
+  ];
 
   static Color _glbBaseColor(Map material) {
     final pbr = material['pbrMetallicRoughness'];
@@ -236,8 +275,9 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
     final factionUniform = Color(palette.uniformHex);
     final factionEmblem = Color(palette.emblemHex);
     final heroicEmissive = key.isHero ? heroicGoldColor : factionEmblem;
-    final teamRing =
-        key.side == PlayerSide.red ? redTeamRingColor : blueTeamRingColor;
+    final teamRing = key.side == PlayerSide.red
+        ? redTeamRingColor
+        : blueTeamRingColor;
 
     var basePedestal = key.isHero ? heroicGoldColor : defaultPedestalColor;
     if (!key.isHero && descriptor != null) {

@@ -175,8 +175,8 @@ final class _Board3DViewportState extends ConsumerState<Board3DViewport>
 
   Future<void> _preloadManifestAssets(AssetManifest manifest) async {
     await _assetProvider.preloadAll(manifest);
-    if (!mounted || _controller.isDisposed) return;
-    _controller.updateSnapshot(_controller.snapshot);
+    if (!mounted) return;
+    _controller.requestRepaint();
   }
 
   static CameraViewTarget cameraTargetForPreset(

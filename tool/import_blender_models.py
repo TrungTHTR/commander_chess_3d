@@ -17,7 +17,7 @@ PIECE_NAMES = {
 }
 
 
-def export_piece(source, destination, piece):
+def export_piece(source, destination, piece, lod1_only):
     bpy.ops.wm.open_mainfile(filepath=str(source))
     scene = bpy.context.scene
     scene.frame_set(1)
@@ -69,6 +69,7 @@ def export_piece(source, destination, piece):
     for part, _ in parts:
         part.data.transform(transform)
 
+    merged = []
     for pedestal in (False, True):
         group = [part for part, is_pedestal in parts if pedestal == is_pedestal]
         bpy.ops.object.select_all(action="DESELECT")
@@ -78,6 +79,7 @@ def export_piece(source, destination, piece):
         bpy.context.view_layer.objects.active = active
         if len(group) > 1:
             bpy.ops.object.join()
+        merged.append(active)
         active.name = "base_pedestal" if pedestal else "body_hull"
         dissolve = active.modifiers.new("Simplify planar faces", "DECIMATE")
         dissolve.decimate_type = "DISSOLVE"
@@ -101,6 +103,21 @@ def export_piece(source, destination, piece):
     root.select_set(True)
     for child in root.children:
         child.select_set(True)
+    if not lod1_only:
+        write_glb(destination)
+
+    for part, triangles in zip(merged, (360, 48)):
+        part.data.calc_loop_triangles()
+        if len(part.data.loop_triangles) > triangles:
+            simplify = part.modifiers.new("Overview triangle budget", "DECIMATE")
+            simplify.ratio = triangles / len(part.data.loop_triangles)
+            bpy.context.view_layer.objects.active = part
+            bpy.ops.object.modifier_apply(modifier=simplify.name)
+
+    write_glb(destination.with_name(destination.name.replace("_lod0.glb", "_lod1.glb")))
+
+
+def write_glb(destination):
     bpy.ops.export_scene.gltf(
         filepath=str(destination), export_format="GLB", use_selection=True,
         export_animations=False, export_texcoords=False,
@@ -109,6 +126,7 @@ def export_piece(source, destination, piece):
 
 def main():
     source_root = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
+    lod1_only = "--lod1-only" in sys.argv[sys.argv.index("--") + 2:]
     assets = Path(__file__).resolve().parents[1] / "assets" / "models"
     pieces = assets / "pieces"
     pieces.mkdir(parents=True, exist_ok=True)
@@ -122,7 +140,7 @@ def main():
         copy.parent.mkdir(parents=True, exist_ok=True)
         if source.resolve() != copy.resolve():
             shutil.copy2(source, copy)
-        export_piece(copy, pieces / f"{faction}_{piece}_lod0.glb", piece)
+        export_piece(copy, pieces / f"{faction}_{piece}_lod0.glb", piece, lod1_only)
 
 
 if __name__ == "__main__":

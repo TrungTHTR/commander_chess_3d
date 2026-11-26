@@ -54,6 +54,7 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
 
   // Pre-allocated scratch math & drawing objects for low-GC 60/120Hz painting.
   final Matrix4 _vpMatrix = Matrix4.identity();
+  final Matrix4 _previousViewProjection = Matrix4.zero();
   final Vector3 _eyePos = Vector3.zero();
   final Vector4 _projVec = Vector4.zero();
   final Vector3 _keyLightDir = Vector3(-0.45, 0.82, 0.35)..normalize();
@@ -98,6 +99,12 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
   Int32List _visibleOrder = Int32List(1536);
   Float32List _visibleDepths = Float32List(1536);
   final List<_SortablePieceRef> _sortedPieces = <_SortablePieceRef>[];
+  final Map<String, _IdlePiecePicture> _idlePieces = {};
+  Size? _previousSize;
+  List<BoardTileSpec>? _terrainTiles;
+  (int, int)? _gridDimensions;
+  ui.Picture? _terrainPicture;
+  ui.Picture? _gridPicture;
 
   // Per-unit animation pose scratch scalars (zero allocations).
   double _bodyPitch = 0.0;
@@ -175,14 +182,65 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
     camera.viewProjectionMatrixInto(size, _vpMatrix);
     camera.eyePositionInto(_eyePos);
 
+    final stableView =
+        size == _previousSize && _vpMatrix == _previousViewProjection;
+    if (stableView) {
+      if (!identical(_terrainTiles, snapshot.tiles)) {
+        _terrainPicture?.dispose();
+        _terrainPicture = null;
+        _terrainTiles = snapshot.tiles;
+      }
+      final dimensions = (snapshot.files, snapshot.ranks);
+      if (_gridDimensions != dimensions) {
+        _gridPicture?.dispose();
+        _gridPicture = null;
+        _gridDimensions = dimensions;
+      }
+      if (_terrainPicture == null) {
+        final recorder = ui.PictureRecorder();
+        _drawTerrain(Canvas(recorder), size, snapshot);
+        _terrainPicture = recorder.endRecording();
+      }
+      if (_gridPicture == null) {
+        final recorder = ui.PictureRecorder();
+        _drawIntersectionGrid(
+          Canvas(recorder),
+          size,
+          snapshot.files,
+          snapshot.ranks,
+        );
+        _gridPicture = recorder.endRecording();
+      }
+      canvas.drawPicture(_terrainPicture!);
+    } else {
+      _clearPictures();
+      _previousSize = size;
+      _previousViewProjection.setFrom(_vpMatrix);
+      _drawTerrain(canvas, size, snapshot);
+    }
+    _drawShaderWaterOverlay(canvas, size, snapshot, safeElapsed);
+    if (stableView) {
+      canvas.drawPicture(_gridPicture!);
+    } else {
+      _drawIntersectionGrid(canvas, size, snapshot.files, snapshot.ranks);
+    }
+    _drawSelectionAndHints(canvas, size, snapshot, safeElapsed);
+    _drawPieces(
+      canvas,
+      size,
+      snapshot,
+      safeElapsed,
+      stableView: stableView,
+      projectionScale:
+          size.height * 0.5 / math.tan(radians(camera.fovDegrees) * 0.5),
+    );
+  }
+
+  void _drawTerrain(Canvas canvas, Size size, RenderBoardSnapshot snapshot) {
     _drawBackground(canvas, size);
     _drawBoardBaseSlab(canvas, size);
     _drawTerrainTiles(canvas, size, snapshot);
     _drawRiverAndFords(canvas, size);
-    _drawShaderWaterOverlay(canvas, size, snapshot, safeElapsed);
-    _drawIntersectionGrid(canvas, size, snapshot.files, snapshot.ranks);
-    _drawSelectionAndHints(canvas, size, snapshot, safeElapsed);
-    _drawPieces(canvas, size, snapshot, safeElapsed);
   }
 
   void _drawBackground(Canvas canvas, Size size) {
@@ -584,10 +642,13 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
     Canvas canvas,
     Size size,
     RenderBoardSnapshot snapshot,
-    double elapsedSeconds,
-  ) {
+    double elapsedSeconds, {
+    required bool stableView,
+    required double projectionScale,
+  }) {
     if (snapshot.pieces.isEmpty) {
       _lastDrawVerticesCallCount = 0;
+      _clearIdlePieces();
       return;
     }
 
@@ -642,15 +703,37 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
     _batchIndexCount = 0;
     _lastDrawVerticesCallCount = 0;
 
+    // Expire pictures for pieces that moved, were captured, or changed assets.
+    for (final picture in _idlePieces.values) {
+      picture.used = false;
+    }
     for (final item in _sortedPieces) {
       final node = item.node;
-      final handle = assetProvider.resolvePiece(node.visualKey);
-      if (handle is ProceduralPieceVisualHandle) {
-        _batchUnitWithPassengers(canvas, size, node, handle, elapsedSeconds);
+      final resolved = assetProvider.resolvePiece(node.visualKey);
+      if (resolved is ProceduralPieceVisualHandle) {
+        final handle = _meshForProjectedSize(resolved, node, projectionScale);
+        if (stableView &&
+            handle.isGlbBacked &&
+            handle.mesh.partPivots.isEmpty &&
+            node.animClip == PieceAnimClip.idle &&
+            !node.isSelected &&
+            !node.visualKey.isHero &&
+            node.carriedVisualKeys.isEmpty &&
+            node.visualKey.type != PieceType.airForce &&
+            node.visualKey.type != PieceType.navy) {
+          _drawIdlePiece(canvas, size, node, handle, elapsedSeconds);
+        } else {
+          _batchUnitWithPassengers(canvas, size, node, handle, elapsedSeconds);
+        }
       }
     }
 
     _flushBatch(canvas);
+    _idlePieces.removeWhere((_, cached) {
+      if (cached.used) return false;
+      cached.picture.dispose();
+      return true;
+    });
 
     // Pass 3: Fallback stack pip when stackCount > 1 lacks passenger keys.
     for (final item in _sortedPieces) {
@@ -676,6 +759,51 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
     }
   }
 
+  ProceduralPieceVisualHandle _meshForProjectedSize(
+    ProceduralPieceVisualHandle fullDetail,
+    RenderPieceNode node,
+    double projectionScale,
+  ) {
+    final overview = fullDetail.overview;
+    if (overview == null) return fullDetail;
+    final m = _vpMatrix.storage;
+    final p = node.worldPosition;
+    final depth = m[3] * p.x + m[7] * p.y + m[11] * p.z + m[15];
+    final diameter = fullDetail.boundingRadius * 2.0;
+    return projectionScale * diameter < depth * 64.0 ? overview : fullDetail;
+  }
+
+  void _drawIdlePiece(
+    Canvas canvas,
+    Size size,
+    RenderPieceNode node,
+    ProceduralPieceVisualHandle handle,
+    double elapsedSeconds,
+  ) {
+    // A picture must stay in painter order with the animated geometry.
+    _flushBatch(canvas);
+    final position = node.worldPosition;
+    final pose = (position.x, position.y, position.z, node.yawRadians);
+    var cached = _idlePieces[node.pieceId];
+    if (cached == null || cached.handle != handle || cached.pose != pose) {
+      cached?.picture.dispose();
+      final recorder = ui.PictureRecorder();
+      final recordingCanvas = Canvas(recorder);
+      _batchUnitWithPassengers(
+        recordingCanvas,
+        size,
+        node,
+        handle,
+        elapsedSeconds,
+      );
+      _flushBatch(recordingCanvas);
+      cached = _IdlePiecePicture(handle, pose, recorder.endRecording());
+      _idlePieces[node.pieceId] = cached;
+    }
+    cached.used = true;
+    canvas.drawPicture(cached.picture);
+  }
+
   void _batchUnitWithPassengers(
     Canvas canvas,
     Size size,
@@ -699,8 +827,11 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
       final resolvedKey = rawKey.faction != null
           ? rawKey
           : rawKey.copyWith(faction: node.visualKey.faction);
-      final h = assetProvider.resolvePiece(resolvedKey);
-      if (h is ProceduralPieceVisualHandle &&
+      final resolved = assetProvider.resolvePiece(resolvedKey);
+      final h = resolved is ProceduralPieceVisualHandle
+          ? resolved.overview ?? resolved
+          : null;
+      if (h != null &&
           h.mesh.faceCount > 0 &&
           h.mesh.vertices.isNotEmpty) {
         p0Handle = h;
@@ -713,8 +844,11 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
       final resolvedKey = rawKey.faction != null
           ? rawKey
           : rawKey.copyWith(faction: node.visualKey.faction);
-      final h = assetProvider.resolvePiece(resolvedKey);
-      if (h is ProceduralPieceVisualHandle &&
+      final resolved = assetProvider.resolvePiece(resolvedKey);
+      final h = resolved is ProceduralPieceVisualHandle
+          ? resolved.overview ?? resolved
+          : null;
+      if (h != null &&
           h.mesh.faceCount > 0 &&
           h.mesh.vertices.isNotEmpty) {
         p1Handle = h;
@@ -821,19 +955,8 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
       visibleCount = res1.visibleEnd;
     }
 
-    // Painter's sort all visible faces of (carrier + passengers) together.
-    for (var i = 1; i < visibleCount; i++) {
-      final keyFace = _visibleOrder[i];
-      final keyDepth = _visibleDepths[i];
-      var j = i - 1;
-      while (j >= 0 && _visibleDepths[j] < keyDepth) {
-        _visibleOrder[j + 1] = _visibleOrder[j];
-        _visibleDepths[j + 1] = _visibleDepths[j];
-        j--;
-      }
-      _visibleOrder[j + 1] = keyFace;
-      _visibleDepths[j + 1] = keyDepth;
-    }
+    // Depth-sort the active prefix and keep original order at equal depth.
+    Int32List.sublistView(_visibleOrder, 0, visibleCount).sort(_compareFaces);
 
     // Append sorted flat-shaded triangles/quads into global drawVertices batch.
     for (var v = 0; v < visibleCount; v++) {
@@ -898,14 +1021,18 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
     }
 
     // Append selective silhouette & hard-crease quads for carrier and passengers.
-    _emitSelectiveEdges(
-      canvas: canvas,
-      topology: carrierTopo,
-      vertOffset: 0,
-      faceOffset: 0,
-      pieceScreenH: pieceScreenH,
-    );
-    if (p0Topo != null && pieceScreenH >= 20.0) {
+    // Imported bevels already read as edges on small models. Avoid drawing
+    // extra strokes over their tessellation until the camera is close.
+    if (!carrierHandle.isGlbBacked || pieceScreenH >= 48.0) {
+      _emitSelectiveEdges(
+        canvas: canvas,
+        topology: carrierTopo,
+        vertOffset: 0,
+        faceOffset: 0,
+        pieceScreenH: pieceScreenH,
+      );
+    }
+    if (p0Topo != null && !p0Handle!.isGlbBacked && pieceScreenH >= 20.0) {
       _emitSelectiveEdges(
         canvas: canvas,
         topology: p0Topo,
@@ -914,7 +1041,7 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
         pieceScreenH: pieceScreenH * 0.45,
       );
     }
-    if (p1Topo != null && pieceScreenH >= 20.0) {
+    if (p1Topo != null && !p1Handle!.isGlbBacked && pieceScreenH >= 20.0) {
       _emitSelectiveEdges(
         canvas: canvas,
         topology: p1Topo,
@@ -949,6 +1076,7 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
     final halfW = size.width * 0.5;
     final halfH = size.height * 0.5;
     final m = _vpMatrix.storage;
+    final imported = handle.isGlbBacked;
 
     final cosBodyPitch = math.cos(_bodyPitch);
     final sinBodyPitch = math.sin(_bodyPitch);
@@ -1090,9 +1218,11 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
       final wz = worldOrigin.z + (-sx * sinYaw + sz * cosYaw);
 
       final vi = vertOffset + i;
-      _unitWorldX[vi] = wx;
-      _unitWorldY[vi] = wy;
-      _unitWorldZ[vi] = wz;
+      if (!imported) {
+        _unitWorldX[vi] = wx;
+        _unitWorldY[vi] = wy;
+        _unitWorldZ[vi] = wz;
+      }
 
       final cx = m[0] * wx + m[4] * wy + m[8] * wz + m[12];
       final cy = m[1] * wx + m[5] * wy + m[9] * wz + m[13];
@@ -1140,6 +1270,20 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
           _unitValid[i3] == 0) {
         _unitFaceVisible[uf] = 0;
         continue;
+      }
+
+      if (imported) {
+        // GLBs provide triangles with glTF's counterclockwise winding. The
+        // viewport flips Y, so front-facing triangles have negative area.
+        final ax = _unitScreenX[i0];
+        final ay = _unitScreenY[i0];
+        final signedArea =
+            (_unitScreenX[i1] - ax) * (_unitScreenY[i2] - ay) -
+            (_unitScreenY[i1] - ay) * (_unitScreenX[i2] - ax);
+        if (signedArea >= 0.0) {
+          _unitFaceVisible[uf] = 0;
+          continue;
+        }
       }
 
       var lnx = normals[f * 3];
@@ -1220,22 +1364,17 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
       final wny = lny;
       final wnz = -lnx * sinYaw + lnz * cosYaw;
 
-      final fcx =
-          (_unitWorldX[i0] + _unitWorldX[i1] + _unitWorldX[i2] + _unitWorldX[i3]) *
-              0.25;
-      final fcy =
-          (_unitWorldY[i0] + _unitWorldY[i1] + _unitWorldY[i2] + _unitWorldY[i3]) *
-              0.25;
-      final fcz =
-          (_unitWorldZ[i0] + _unitWorldZ[i1] + _unitWorldZ[i2] + _unitWorldZ[i3]) *
-              0.25;
-
-      final vx = _eyePos.x - fcx;
-      final vy = _eyePos.y - fcy;
-      final vz = _eyePos.z - fcz;
-      if (wnx * vx + wny * vy + wnz * vz <= 0.0) {
-        _unitFaceVisible[uf] = 0;
-        continue;
+      if (!imported) {
+        final vx = _eyePos.x -
+            (_unitWorldX[i0] + _unitWorldX[i1] + _unitWorldX[i2] + _unitWorldX[i3]) * 0.25;
+        final vy = _eyePos.y -
+            (_unitWorldY[i0] + _unitWorldY[i1] + _unitWorldY[i2] + _unitWorldY[i3]) * 0.25;
+        final vz = _eyePos.z -
+            (_unitWorldZ[i0] + _unitWorldZ[i1] + _unitWorldZ[i2] + _unitWorldZ[i3]) * 0.25;
+        if (wnx * vx + wny * vy + wnz * vz <= 0.0) {
+          _unitFaceVisible[uf] = 0;
+          continue;
+        }
       }
 
       final keyDot = math.max(
@@ -1275,7 +1414,7 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
       );
 
       _visibleOrder[visibleCount] = uf;
-      _visibleDepths[visibleCount] =
+      _visibleDepths[uf] =
           (_unitDepth[i0] + _unitDepth[i1] + _unitDepth[i2] + _unitDepth[i3]) *
               0.25;
       visibleCount++;
@@ -1285,6 +1424,11 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
         ? (maxSY - minSY).clamp(8.0, 240.0)
         : 24.0;
     return (visibleEnd: visibleCount, screenHeight: screenH);
+  }
+
+  int _compareFaces(int a, int b) {
+    final depthOrder = _visibleDepths[b].compareTo(_visibleDepths[a]);
+    return depthOrder == 0 ? a.compareTo(b) : depthOrder;
   }
 
   void _emitSelectiveEdges({
@@ -1694,7 +1838,34 @@ final class Placeholder3DBoardRenderer implements BoardSceneRenderer {
   void dispose() {
     _disposed = true;
     _sortedPieces.clear();
+    _clearPictures();
+    _previousSize = null;
   }
+
+  void _clearPictures() {
+    _terrainPicture?.dispose();
+    _gridPicture?.dispose();
+    _terrainPicture = null;
+    _gridPicture = null;
+    _terrainTiles = null;
+    _clearIdlePieces();
+  }
+
+  void _clearIdlePieces() {
+    for (final cached in _idlePieces.values) {
+      cached.picture.dispose();
+    }
+    _idlePieces.clear();
+  }
+}
+
+final class _IdlePiecePicture {
+  _IdlePiecePicture(this.handle, this.pose, this.picture);
+
+  final ProceduralPieceVisualHandle handle;
+  final (double, double, double, double) pose;
+  final ui.Picture picture;
+  bool used = true;
 }
 
 final class _SortablePieceRef {

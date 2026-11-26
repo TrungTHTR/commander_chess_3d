@@ -50,7 +50,11 @@ The editable source files live in `assets/models/blender/<faction>/`. To import 
 & 'D:\Software\Blender\blender.exe' -b --python-exit-code 1 -P tool/import_blender_models.py -- 'D:\3d_comander_chess_model'
 ```
 
-Pass `assets/models/blender` as the source to re-export edits made to the project's copies. The script bakes frame 1 and writes the GLBs using the existing manifest filenames. The app applies gameplay motion to the resulting meshes. Restart the app after re-exporting to reload the assets. The procedural GLB generator writes its sample exports to `build/procedural_glbs/`.
+Pass `assets/models/blender` as the source to re-export edits made to the project's copies. The script bakes frame 1 and writes `_lod0.glb` for close-ups and `_lod1.glb` for small pieces on screen. The app applies gameplay motion to both variants. Restart the app after re-exporting to reload the assets. The procedural GLB generator writes its sample exports to `build/procedural_glbs/`.
+
+### Measure 3D frame timing
+
+Run `flutter run -d chrome --profile`, open a match, and sample both a still board and a camera orbit in DevTools. At 60 Hz the frame budget is 16.7 ms. At 120 Hz it is 8.3 ms. The scene simulation ticks at 120 Hz, and Flutter schedules draws at the display's refresh rate. To measure above 60 FPS, use a display, browser, and graphics configuration running above 60 Hz.
 
 ---
 
