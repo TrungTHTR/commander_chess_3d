@@ -755,6 +755,25 @@ void main() {
       expect(sampleGlb!.nodeNames, contains('socket_passenger_0'));
       expect(sampleGlb.nodeNames, contains('socket_passenger_1'));
 
+      for (final faction in FactionId.values) {
+        for (final type in PieceType.values) {
+          final key = PieceVisualKey(type: type, side: PlayerSide.red, faction: faction);
+          final imported = realProvider.preloadedGlbFor(key)!;
+          final red = realProvider.resolvePiece(key) as ProceduralPieceVisualHandle;
+          final blue = realProvider.resolvePiece(key.copyWith(side: PlayerSide.blue))
+              as ProceduralPieceVisualHandle;
+          expect(red.isGlbBacked && blue.isGlbBacked, isTrue);
+          expect(red.mesh, same(imported.renderMesh));
+          expect(blue.mesh, same(red.mesh));
+          expect(red.mesh.triangleCount, imported.triangleCount);
+          expect(red.mesh.passengerSockets, hasLength(type.carrierCapacity));
+          final teamSlot = ProceduralMaterialSlot.teamRing.index;
+          expect(red.mesh.faceSlots, contains(teamSlot));
+          expect(red.colorForSlot(teamSlot), ProceduralPieceAssetProvider.redTeamRingColor);
+          expect(blue.colorForSlot(teamSlot), ProceduralPieceAssetProvider.blueTeamRingColor);
+        }
+      }
+
       realProvider.dispose();
       expect(realProvider.cachedMeshCount, equals(0));
       expect(realProvider.preloadedGlbCount, equals(0));
@@ -844,17 +863,9 @@ void main() {
           expect(parsed.maxBounds.y - parsed.minBounds.y, greaterThan(0.05));
           expect(parsed.maxBounds.z - parsed.minBounds.z, greaterThan(0.05));
 
-          expect(
-            parsed.materialNames,
-            containsAll(const <String>[
-              'mat_faction_primary',
-              'mat_faction_accent',
-              'mat_base_pedestal',
-              'mat_neutral_metal',
-              'mat_heroic_emissive',
-              'mat_team_ring',
-            ]),
-          );
+          expect(parsed.materialNames, contains('mat_team_ring'));
+          expect(parsed.materialNames.length, greaterThan(1));
+          expect(parsed.nodeNames, containsAll(['base_pedestal', 'body_hull']));
 
           if (type.carrierCapacity >= 1) {
             expect(parsed.nodeNames, contains('socket_passenger_0'));

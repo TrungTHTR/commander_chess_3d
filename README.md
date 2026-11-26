@@ -40,6 +40,18 @@ flutter build web
 
 > **Platform Note (Windows)**: Android, iOS, Web, Windows, macOS, and Linux runners are generated. On Windows hosts without Visual Studio C++ ("Desktop development with C++"), use `flutter test`, `flutter run -d chrome`, `flutter build web`, or Android targets (`flutter build apk`).
 
+### Use or update the 3D pieces
+
+Start a match and select a faction for each side. The board loads the matching 3D pieces from `assets/models/pieces/` through `factionMeshes` in `assets/models/asset_manifest.json`. Flutter bundles the GLBs through `pubspec.yaml`. The software renderer uses the exported geometry and base colors, applies the player color to the pedestal, and uses procedural pieces during loading or if a GLB cannot be read.
+
+The editable source files live in `assets/models/blender/<faction>/`. To import from the original roster, run this from the project root with Blender 5.3 or a compatible version.
+
+```powershell
+& 'D:\Software\Blender\blender.exe' -b --python-exit-code 1 -P tool/import_blender_models.py -- 'D:\3d_comander_chess_model'
+```
+
+Pass `assets/models/blender` as the source to re-export edits made to the project's copies. The script bakes frame 1 and writes the GLBs using the existing manifest filenames. The app applies gameplay motion to the resulting meshes. Restart the app after re-exporting to reload the assets. The procedural GLB generator writes its sample exports to `build/procedural_glbs/`.
+
 ---
 
 ## Project Structure

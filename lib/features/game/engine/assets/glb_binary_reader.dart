@@ -20,6 +20,7 @@ final class GlbParsedAsset {
     required this.minBounds,
     required this.maxBounds,
     required this.jsonRoot,
+    this.renderMesh,
   });
 
   final int version;
@@ -31,6 +32,7 @@ final class GlbParsedAsset {
   final Vector3 minBounds;
   final Vector3 maxBounds;
   final Map<String, dynamic> jsonRoot;
+  final ProceduralMeshPrimitive? renderMesh;
 }
 
 /// Pure-Dart Khronos glTF 2.0 binary (`.glb`) parser and validator.
@@ -44,6 +46,7 @@ abstract final class GlbBinaryReader {
   static const int chunkTypeBin = 0x004E4942; // "BIN\0"
   static const int componentTypeFloat = 5126;
   static const int componentTypeUnsignedShort = 5123;
+  static const String _teamRingMaterialName = 'mat_team_ring';
 
   static int _readOptionalInt(
     Map<dynamic, dynamic> map,
@@ -76,13 +79,21 @@ abstract final class GlbBinaryReader {
     return result;
   }
 
-  static GlbParsedAsset parseByteData(ByteData data) {
+  static GlbParsedAsset parseByteData(
+    ByteData data, {
+    bool includeRenderMesh = false,
+  }) {
     return parse(
-      Uint8List.sublistView(data.buffer.asUint8List(), data.offsetInBytes, data.offsetInBytes + data.lengthInBytes),
+      Uint8List.sublistView(
+        data.buffer.asUint8List(),
+        data.offsetInBytes,
+        data.offsetInBytes + data.lengthInBytes,
+      ),
+      includeRenderMesh: includeRenderMesh,
     );
   }
 
-  static GlbParsedAsset parse(Uint8List bytes) {
+  static GlbParsedAsset parse(Uint8List bytes, {bool includeRenderMesh = false}) {
     if (bytes.length < 20 || bytes.length % 4 != 0) {
       throw FormatException('Invalid GLB byte length: ${bytes.length}.');
     }
@@ -219,6 +230,8 @@ abstract final class GlbBinaryReader {
     final nodeNames = <String>[];
     final meshTransformScale = <int, List<double>>{};
     final meshTransformTranslate = <int, List<double>>{};
+    final pedestalMeshes = <int>{};
+    final sockets = <int, Vector3>{};
     for (final node in nodes) {
       if (node is! Map) {
         throw const FormatException('Invalid glTF node entry.');
@@ -254,6 +267,19 @@ abstract final class GlbBinaryReader {
         if (parsedTrans != null) {
           meshTransformTranslate[meshIdx] = parsedTrans;
         }
+        if (name == MeshPartTag.basePedestal.nodeName) {
+          pedestalMeshes.add(meshIdx);
+        }
+      }
+      if (includeRenderMesh &&
+          name is String &&
+          name.startsWith('socket_passenger_')) {
+        final index = int.tryParse(name.substring('socket_passenger_'.length));
+        if (index != null) {
+          sockets[index] = parsedTrans == null
+              ? Vector3.zero()
+              : Vector3(parsedTrans[0], parsedTrans[1], parsedTrans[2]);
+        }
       }
     }
 
@@ -277,6 +303,15 @@ abstract final class GlbBinaryReader {
     var maxZ = double.negativeInfinity;
     var totalVertices = 0;
     var totalTriangles = 0;
+    final vertices = <double>[];
+    final indices = <int>[];
+    final normals = <double>[];
+    final faceSlots = <int>[];
+    final partTags = <int>[];
+    if (includeRenderMesh &&
+        materials.length + ProceduralMaterialSlot.values.length > 256) {
+      throw const FormatException('Too many materials for the board renderer.');
+    }
 
     for (var mIdx = 0; mIdx < meshes.length; mIdx++) {
       final mesh = meshes[mIdx];
@@ -290,6 +325,9 @@ abstract final class GlbBinaryReader {
       final scale = meshTransformScale[mIdx] ?? const <double>[1.0, 1.0, 1.0];
       final trans =
           meshTransformTranslate[mIdx] ?? const <double>[0.0, 0.0, 0.0];
+      final part = pedestalMeshes.contains(mIdx)
+          ? MeshPartTag.basePedestal
+          : MeshPartTag.bodyHull;
 
       for (final prim in prims) {
         if (prim is! Map || prim['attributes'] is! Map) {
@@ -306,6 +344,10 @@ abstract final class GlbBinaryReader {
         }
 
         final attrs = prim['attributes'] as Map;
+        final materialIndex = matIdx as int? ?? 0;
+        final slot = materialNames[materialIndex] == _teamRingMaterialName
+            ? ProceduralMaterialSlot.teamRing.index
+            : ProceduralMaterialSlot.values.length + materialIndex;
         final posAccessorIdx = attrs['POSITION'];
         if (posAccessorIdx is! int ||
             posAccessorIdx < 0 ||
@@ -356,6 +398,7 @@ abstract final class GlbBinaryReader {
           throw const FormatException('POSITION accessor out of bufferView bounds.');
         }
 
+        final vertexOffset = totalVertices;
         for (var i = 0; i < posCount; i++) {
           final base = posBvOffset + posAccOffset + i * posStride;
           final rx = binView.getFloat32(base, Endian.little);
@@ -366,6 +409,12 @@ abstract final class GlbBinaryReader {
           final z = rz * scale[2] + trans[2];
           if (!x.isFinite || !y.isFinite || !z.isFinite) {
             throw const FormatException('Non-finite POSITION coordinate.');
+          }
+          if (includeRenderMesh) {
+            vertices
+              ..add(x)
+              ..add(y)
+              ..add(z);
           }
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
@@ -479,6 +528,7 @@ abstract final class GlbBinaryReader {
             idxCount > (idxBvLen - idxAccOffset) ~/ 2) {
           throw const FormatException('indices accessor out of bufferView bounds.');
         }
+        final firstFace = indices.length;
         for (var k = 0; k < idxCount; k++) {
           final idxVal = binView.getUint16(
             idxBvOffset + idxAccOffset + k * 2,
@@ -489,6 +539,31 @@ abstract final class GlbBinaryReader {
               'Vertex index $idxVal out of range [0, $posCount).',
             );
           }
+          if (includeRenderMesh) {
+            final index = vertexOffset + idxVal;
+            indices.add(index);
+            // A triangle repeats its last vertex in the canvas mesh format.
+            if (k % 3 == 2) indices.add(index);
+          }
+        }
+        for (var face = firstFace; face < indices.length; face += 4) {
+          final a = indices[face] * 3;
+          final b = indices[face + 1] * 3;
+          final c = indices[face + 2] * 3;
+          final ab = Vector3(
+            vertices[b] - vertices[a],
+            vertices[b + 1] - vertices[a + 1],
+            vertices[b + 2] - vertices[a + 2],
+          );
+          final ac = Vector3(
+            vertices[c] - vertices[a],
+            vertices[c + 1] - vertices[a + 1],
+            vertices[c + 2] - vertices[a + 2],
+          );
+          final normal = ab.cross(ac)..normalize();
+          normals.addAll(normal.storage);
+          faceSlots.add(slot);
+          partTags.add(part.index);
         }
         totalTriangles += idxCount ~/ 3;
       }
@@ -508,6 +583,18 @@ abstract final class GlbBinaryReader {
       minBounds: Vector3(minX, minY, minZ),
       maxBounds: Vector3(maxX, maxY, maxZ),
       jsonRoot: Map<String, dynamic>.unmodifiable(decoded),
+      renderMesh: includeRenderMesh
+          ? ProceduralMeshPrimitive(
+              vertices: Float32List.fromList(vertices),
+              faceIndices: Int32List.fromList(indices),
+              faceNormals: Float32List.fromList(normals),
+              faceSlots: Uint8List.fromList(faceSlots),
+              facePartTags: Uint8List.fromList(partTags),
+              passengerSockets: [
+                for (final index in sockets.keys.toList()..sort()) sockets[index]!,
+              ],
+            )
+          : null,
     );
   }
 }

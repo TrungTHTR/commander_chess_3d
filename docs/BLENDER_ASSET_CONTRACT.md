@@ -1,5 +1,7 @@
 # Blender 3D Asset & glTF 2.0 (`.glb`) Integration Contract
 
+The current Flutter renderer uses the baked faction piece exports described in [Use or update the 3D pieces](../README.md#use-or-update-the-3d-pieces). The specification below describes the target contract for future board meshes, texture channels, animated model hierarchies, and GPU rendering.
+
 This specification defines the exact 3D modeling, coordinate, hierarchy, PBR material, NLA animation, and manifest contract between **Blender artists** and the **Flutter 3D engine layer** (`lib/features/game/engine/`). Adhering to this contract allows Blender-authored `.glb` pieces and terrain boards to replace the starter procedural 3D primitives with **zero changes** to `models/`, `rules/`, `repositories/`, or Riverpod `state/`.
 
 ---

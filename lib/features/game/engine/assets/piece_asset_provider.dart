@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show Color;
 
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
@@ -26,13 +27,14 @@ abstract interface class PieceAssetProvider {
   void dispose();
 }
 
-/// Resolved procedural 3D piece geometry + faction/heroic/team material palette.
+/// Canvas-ready piece geometry and its faction, heroic, and team palette.
 final class ProceduralPieceVisualHandle implements PieceVisualHandle {
   ProceduralPieceVisualHandle({
     required this.visualKey,
     required this.boundingRadius,
     required this.mesh,
     required this.slotColors,
+    this.isGlbBacked = false,
   });
 
   @override
@@ -42,7 +44,7 @@ final class ProceduralPieceVisualHandle implements PieceVisualHandle {
   final double boundingRadius;
 
   @override
-  bool get isGlbBacked => false;
+  final bool isGlbBacked;
 
   final ProceduralMeshPrimitive mesh;
 
@@ -57,9 +59,7 @@ final class ProceduralPieceVisualHandle implements PieceVisualHandle {
   }
 }
 
-/// Faction-aware 3D piece asset provider generating 121 national silhouettes
-/// synchronously on Frame 1 via [FactionUnitMeshBuilder] and preloading/verifying
-/// bundled `.glb` binaries via [GlbBinaryReader].
+/// Resolves bundled GLB meshes and provides procedural geometry while loading.
 final class ProceduralPieceAssetProvider implements PieceAssetProvider {
   ProceduralPieceAssetProvider({
     this._bundle,
@@ -120,7 +120,7 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
       return;
     }
 
-    // Collect distinct `.glb` paths from manifest.factionMeshes and verify via GlbBinaryReader.
+    // Both team colors share the same mesh for each faction and piece type.
     final paths = <String>{};
     for (final inner in manifest.factionMeshes.values) {
       paths.addAll(inner.values);
@@ -136,7 +136,10 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
       try {
         final byteData = await activeBundle.load(path);
         if (_disposed || epoch != _preloadEpoch) return;
-        final parsed = GlbBinaryReader.parseByteData(byteData);
+        final parsed = GlbBinaryReader.parseByteData(
+          byteData,
+          includeRenderMesh: true,
+        );
         if (_disposed || epoch != _preloadEpoch) return;
         _glbCache[path] = parsed;
       } on Object {
@@ -144,6 +147,7 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
         // synchronous procedural meshes guarantee Frame-1 rendering regardless.
       }
     }
+    if (!_disposed && epoch == _preloadEpoch) _handleCache.clear();
   }
 
   @override
@@ -171,17 +175,52 @@ final class ProceduralPieceAssetProvider implements PieceAssetProvider {
 
   ProceduralPieceVisualHandle _createHandle(PieceVisualKey key) {
     final effectiveFaction = _resolveEffectiveFaction(key);
-    final mesh = _meshCache.putIfAbsent(
-      (effectiveFaction, key.type),
-      () => FactionUnitMeshBuilder.build(effectiveFaction, key.type),
-    );
+    final imported = preloadedGlbFor(key);
+    final importedMesh = imported?.renderMesh;
+    final mesh = importedMesh ??
+        _meshCache.putIfAbsent(
+          (effectiveFaction, key.type),
+          () => FactionUnitMeshBuilder.build(effectiveFaction, key.type),
+        );
     final descriptor = _manifest?.findPiece(key);
     final slotColors = _resolveSlotColors(key, effectiveFaction, descriptor);
     return ProceduralPieceVisualHandle(
       visualKey: key,
       boundingRadius: descriptor?.boundingRadius ?? 0.425,
       mesh: mesh,
-      slotColors: slotColors,
+      slotColors: importedMesh == null
+          ? slotColors
+          : [
+              ...slotColors,
+              for (final material in imported!.jsonRoot['materials'] as List)
+                _glbBaseColor(material as Map),
+            ],
+      isGlbBacked: importedMesh != null,
+    );
+  }
+
+  static Color _glbBaseColor(Map material) {
+    final pbr = material['pbrMetallicRoughness'];
+    final factor = pbr is Map ? pbr['baseColorFactor'] : null;
+    if (factor is! List ||
+        factor.length != 4 ||
+        factor.any((value) => value is! num || !value.isFinite)) {
+      return const Color(0xFFFFFFFF);
+    }
+
+    int srgb(num linear) {
+      final value = linear.clamp(0.0, 1.0);
+      final encoded = value <= 0.0031308
+          ? 12.92 * value
+          : 1.055 * math.pow(value, 1 / 2.4) - 0.055;
+      return (encoded * 255).round();
+    }
+
+    return Color.fromARGB(
+      255,
+      srgb(factor[0] as num),
+      srgb(factor[1] as num),
+      srgb(factor[2] as num),
     );
   }
 

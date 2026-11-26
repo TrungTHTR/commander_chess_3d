@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -8,20 +7,9 @@ import 'package:commander_chess_3d/features/game/models/faction_model.dart';
 import 'package:commander_chess_3d/features/game/models/piece_model.dart';
 
 void main() {
-  final outDir = Directory('assets/models/pieces');
+  final outDir = Directory('build/procedural_glbs');
   if (!outDir.existsSync()) {
     outDir.createSync(recursive: true);
-  }
-
-  final manifestFile = File('assets/models/asset_manifest.json');
-  Map<String, dynamic>? manifestFactionMeshes;
-  if (manifestFile.existsSync()) {
-    final decoded = jsonDecode(manifestFile.readAsStringSync());
-    if (decoded is Map<String, dynamic> && decoded['factionMeshes'] is Map) {
-      manifestFactionMeshes = Map<String, dynamic>.from(
-        decoded['factionMeshes'] as Map,
-      );
-    }
   }
 
   var generatedCount = 0;
@@ -77,16 +65,8 @@ void main() {
         );
       }
 
-      var targetPath =
-          'assets/models/pieces/${faction.code}_${type.snakeCaseName}_lod0.glb';
-      if (manifestFactionMeshes != null) {
-        final inner = manifestFactionMeshes[faction.code];
-        if (inner is Map && inner[type.snakeCaseName] is String) {
-          targetPath = inner[type.snakeCaseName] as String;
-        }
-      }
-
-      File(targetPath).writeAsBytesSync(glbBytes, flush: true);
+      final filename = '${faction.code}_${type.snakeCaseName}_lod0.glb';
+      File('${outDir.path}/$filename').writeAsBytesSync(glbBytes, flush: true);
       generatedCount++;
     }
   }
